@@ -79,8 +79,18 @@ If this doesn't work for you, see 'Resources'. You may find something useful.
 # Resources
 (Remember that these may say different things about the same issue. You might have to tailor the fix to your needs or maybe one of these will work for you as-it-is). 
 
-https://quinndombrowski.com/blog/2022/05/07/hosting-eleventy-on-github-pages/
-https://github.com/11ty/eleventy/discussions/1455
-https://www.linkedin.com/pulse/eleventy-github-pages-lea-tortay/
-https://donnacodes.com/publishing_eleventy_site_to_github_pages
-https://tomhiskey.co.uk/blog/deploying-eleventy-to-github-pages-one-way/
+
+
+[https://quinndombrowski.com/blog/2022/05/07/hosting-eleventy-on-github-pages/](https://quinndombrowski.com/blog/2022/05/07/hosting-eleventy-on-github-pages)
+
+
+[https://github.com/11ty/eleventy/discussions/1455](https://github.com/11ty/eleventy/discussions/1455)
+
+
+[https://www.linkedin.com/pulse/eleventy-github-pages-lea-tortay/](https://www.linkedin.com/pulse/eleventy-github-pages-lea-tortay/)
+
+
+[https://donnacodes.com/publishing_eleventy_site_to_github_pages](https://donnacodes.com/publishing_eleventy_site_to_github_pages)
+
+
+[https://tomhiskey.co.uk/blog/deploying-eleventy-to-github-pages-one-way/](https://tomhiskey.co.uk/blog/deploying-eleventy-to-github-pages-one-way/)
