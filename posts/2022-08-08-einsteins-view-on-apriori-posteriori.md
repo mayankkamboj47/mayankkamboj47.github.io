@@ -3,8 +3,8 @@ title : Einstein's view on how apriori knowledge is possible
 layout : post
 ---
 
-> This article is a 250-word paper I wrote several months back in college. It summarises [Einstein's address to the Prussian Academy of Sciences](https://mathshistory.st-andrews.ac.uk/Extras/Einstein_geometry/) titled 'Geometry and Experience'. The paper addresses the conflict between Euclidean Geometry and the discovery that the structure of space is not euclidean. For the layman, it addresses the question : How is math so certain and absolute, while the sciences are constantly finding faults in their theories and correcting them. Is math always right ? How is the nature of math and science different ? Looked at it in another, third way, it summarises Einstein's view on the apriori-posteriori analytic-synthetic
-distinction, where he rules out the apriori-synthetic possibility. 
+> This article is a 250-word summary of [Einstein's address to the Prussian Academy of Sciences](https://mathshistory.st-andrews.ac.uk/Extras/Einstein_geometry/) titled 'Geometry and Experience' that I wrote several months back in college. There are three ways (or maybe more) to look at what the article does. It addresses the conflict between Euclidean Geometry and the discovery that the structure of space is not euclidean. Secondly, it addresses the question : How is math so certain and absolute, while the sciences are constantly finding faults in their theories and correcting them. Is math always right ? How is the nature of math and science different ? Thirdly, it summarises Einstein's view on the apriori-posteriori analytic-synthetic
+distinction, where he rules out the apriori-synthetic possibility. All of these are similar if not identical problems. Rather than rewriting a more-or-less same argument at length in a post, I am posting the paper itself.
 
 
 This paper summarizes Einstein’s argument for how a priori knowledge is possible. 
