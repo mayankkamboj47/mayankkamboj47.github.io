@@ -1,0 +1,182 @@
+<!doctype html>
+
+<html lang=en>
+<meta charset='utf-8' />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Twin Prime Conjecture</title>
+<style>
+    nav, nav ul{
+        list-style : none;
+        display : flex;
+        margin : 0;
+        padding : 0;
+    }
+    nav a {
+        display : block;
+        margin : 0.5rem 1rem;
+    }
+    nav a#logo{
+        margin-left : 0;
+    }
+    nav{
+        justify-content : space-between;
+        margin-bottom : 1.5rem;
+    }
+    body{
+        max-width : 1000px;
+        margin : 0 auto;
+        padding : 0 1rem;
+    }
+    footer { 
+        border-top : 1px solid gray;
+        padding : 1rem 0;
+        text-align : right;
+    }
+    .post-title{
+        margin-top : 0;
+    }
+</style>
+
+<body>
+
+<nav>
+    <a href="/" id="logo">Mayank Kamboj</a>
+    <ul>
+        <li><a href="/about">About</a></li>
+        <li><a href="/work">Work</a></li>
+    </ul>
+</nav>
+<article class='post'>
+  <h1>Twin Prime Conjecture</h1>
+  <p>Over the course of my years at university, I have now and then thought about the Twin Prime
+Conjecture. I have never intensely conducted the study of primes, or even that of mathematics
+(my major is Computer Science),
+but I have always felt intimate to the subject and therefore to some of its results.</p>
+<p>The approach to solving the conjecture that I list below first came to me in a flash when studying Discrete Mathematics towards the end of my first year of college when I had just been toying with the conjecture a day prior. I turned the lecture
+volume to a zero in those days of lockdown online classes, and got to work. It was a failed attempt, and the approach has come back to me again and again over the years sometimes - either getting refined or just expressing the same old results in a new different way. I have never seriously worked on the conjecture though - at best I've worked continuously a week or so. But I haven't completely abandoned it either - so I might continue to think of this for years to come.</p>
+<h1>A sieve</h1>
+<p>The approach begins with Erathosthenes' sieve, which is more than 2000 years old. The idea popularly goes as follows :</p>
+<p>Take the natural numbers from 2 upto a particular limit <code>N</code>. Here, I'll take <code>N=49</code>.</p>
+<pre><code>2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 ... 41 42 43 44 45 46 47 48 49
+</code></pre>
+<p>Start at the first number</p>
+<pre><code>2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 ... 41 42 43 44 45 46 47 48 49
+^
+start here
+</code></pre>
+<p>The first number is 2. We remove all <em>other</em> multiples of 2.</p>
+<pre><code>2 3   5   7   9    11    13    15    17    19    ... 41    43    45    47    49
+^
+you are here
+</code></pre>
+<p>Now, move to the next number, and except the number remove all other multiples.</p>
+<pre><code>2 3   5   7        11    13          17    19    ... 41    43          47    49
+  ^
+  you are here
+</code></pre>
+<p>We've removed all multiples of 3 above. You may or may not have noticed that the numbers
+above are almost-prime as we continue this process. To leave out just the primes, we'll have
+to repeat the process above till (including) square of 49, which is 7  <a href="">Why square root?</a>.</p>
+<p>Now, I'll do two different things. First, we are interested in the patterns between numbers,
+not the numbers themselves so I'll write a <code>*</code> in place of a number, and that will save us brain
+power, to be able to keep going. I will also kind of extend the notion of sieving to the situation where there is no upper limit (49 was the upper limit in the above case).</p>
+<p>Let's first extend the sieve.</p>
+<h1>Extending the sieve</h1>
+<p>In the previous case, we worked with natural numbers till 49. I'll now remove the &quot;till 49&quot; part. We start with the natural numbers as usual, leaving out 1.</p>
+<pre><code>2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 ... 
+</code></pre>
+<p>But there is no end to these numbers - they stretch to infinity. The sieving will proceed as usual. But no matter how far you sieve now, the sequence never becomes prime. It might get &quot;infinitely close to prime&quot; - although I must admit that I do not know if limits can be formally
+applied to this case. I find it helpful to think of the limit of this kind of sieving as the
+sequence of primes and so I will do that for the rest of this article.</p>
+<p>To get a feel for how sieving will work without an upper bound, here are a few examples :</p>
+<p>The sieve of 2 :</p>
+<pre><code>2 3   5   7   9    11    13    15    17    19    21    23    25    ...
+</code></pre>
+<p>The sieve of 3 :</p>
+<pre><code>2 3   5   7        11    13          17    19          23    25    ...
+</code></pre>
+<p>The sieve of 5 :</p>
+<pre><code>2 3   5   7        11    13          17    19          23          ...
+</code></pre>
+<p>And so on.</p>
+<h1>Patterns, not numbers</h1>
+<p>It doesn't matter much to me whether the twin primes are an 11 and 13, or 29 and 31. Only their being twins matters, how far apart they are might matter, and how and whether they repeat definitely matters since we're trying to prove &quot;Such primes extend infintely&quot;.</p>
+<p>Instead of the number then, I'll write a <code>*</code>, and in the gaps I'll put a <code> </code>. Here are the sieves using this new notation.</p>
+<p>The natural numbers</p>
+<pre><code>*****************************************************************************************
+</code></pre>
+<p>The sieve of 2 :</p>
+<pre><code>** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+</code></pre>
+<p>The sieve of 3 :</p>
+<pre><code>** * *   * *   * *   * *   * *   * *   * *   * *   * *   * *   * *   * *   * *   * *   * *   
+</code></pre>
+<p>The sieve of 5 :</p>
+<pre><code>** * *   * *   * *   *     * *     *   * *   * *   *     * *     *   * *   * *   *     * *   
+</code></pre>
+<p>The sieve of 7 :</p>
+<pre><code>** * *   * *   * *   *     * *     *   * *   *     *     * *     *   * *   * *   *     * *   
+</code></pre>
+<p>Beautiful. I'm also able to see the candidates for twin primes in the sieve of 2 and 3. Then
+the incoming primes eliminate some of these twin primes going forward. We have two kinds of
+twin primes. One is candidate twin primes - this includes all pairs of the kind <code>* *</code> such as
+the ones you see in the sieve of 3. Another is &quot;True twin primes&quot;, which, for a sieve of x,
+are twin primes before x**2.</p>
+<p>Another short way of notation now : Instead of writing the infinitely recurring sieve of
+2, I will just write the repeating bit pattern with a non-repeating prefix. For example,
+two's sieve would be <code>**&lt; *&gt;</code>. Where the <code>&lt;&gt;</code> enclose the repeating bit pattern.
+<code>**&lt; *&gt;</code> is the same as <code>** &lt;* &gt;</code> which is the same as <code>** *&lt; *&gt;</code>. You can expand as much as you please.
+In this notation, sieving will proceed as follows :
+<code>**&lt; *&gt;</code> will be written as 11&lt;01&gt;. We will get the numerical value for the <code>*</code> we want to sieve for (just count the
+number of <code>*</code>s before, and add 2) - call this value <code>a</code>. We will shift the bit pattern so that this is the last <code>*</code> in the prefix, and the rest is the repeating pattern. Now, we will generate another bit pattern of the sort <code>&lt;1111... (a-1 times)0&gt;</code>. We've got two bit patterns, one the <code>11&lt;01&gt;</code> and the other,
+the <code>&lt;1111... (a-1 times)0&gt;</code> of size a, where a is prime. We write these repeating portions of the bit patterns next to each other, and repeat each patterns as many times as necessary so that
+they are both the same size. You'll see that we have to repeat the a-sized pattern the size-of-the-previous-pattern times, and the other pattern a times <a href="">Why?</a>.</p>
+<pre><code>{pattern for the sieve so far, repeated a times}
+{a pattern of size a, where the first a-1 digits are 1 and the last is a 0}
+
+= 
+
+
+01010101010101010101...010101010101010
+1111...(a-1 times)01111...(a-1 times)0
+</code></pre>
+<p>And now, we take a bitwise <code>and</code> to get the resultant pattern after sieving (the prefix will remain as it is).
+Incase of 2 and 3, I have demonstrated this below :</p>
+<pre><code>prefix : 11             # 2 and 3, make sure the last 1 represents the number you're sieving wth
+{01} repeated 3 times
+{110} repeated two times
+
+=
+
+prefix : 11
+010101
+110110            &amp;
+_______
+010100
+_______
+
+=
+prefix : 11, with repeating 010100
+or 11{010100}
+=  **{ * *  }
+</code></pre>
+<p>Converting from <code>10</code> bitwise to the star-space notation is not necessary, but it makes it more pleasing to the eye to look at the pattern.</p>
+<h1>What now ?</h1>
+<p>There is a twin prime pair in the repeating bit part in the resultant sieve above. If we can show that no matter how many times we repeat this process, there are going to be twin prime candidates in the repeating bit pattern, we've shown that there are infinite twin prime candidates.</p>
+<p>Here's the proof, by induction.
+If there are twin primes in the repeating portion of some sieve, then the next sieve is going to proceed as follows :
+The number <code>a</code> will get the same number of zeroes as the size of the pattern, but these zeroes will align themselves only once with each position <a href="">Why?</a>. The above pattern repeats <code>a</code> times, which means it is going to have <code>a</code> times the twin prime candidates as the previous pattern. Of the <code>a</code> different sibils of the same twin prime pair, the number is going to only be able to destroy two maximum - leaving the other sibils intact in the forthcoming pattern.</p>
+<h1>This doesn't prove the conjecture</h1>
+<p>This proves that no matter how much you sieve, there are going to be twin prime candidates in your resultant sieve.</p>
+<p>More concisely, we've proven there are infinite twin prime candidates in any sieve.</p>
+<p>However, being a twin prime candidate is not the same as being a true twin prime - you are a twin prime in <code>a</code>'s sieve only if you are a candidate within <code>a**2</code> distance from the beginning of the sieve pattern - and we've been unsuccessful at proving that. If the numbers were conspiring, they could keep the twin prime candidates at bay and never allow them to reach within <code>a**2</code> distance from the right, making the number of true twin primes finite. However, these twin primes candidates are nastily arranged if we're looking at the sieve of a large number. A single number will not be able to sieve the twin candidates away from the <code>a**2</code> range, because there are lots of repeating patterns like <code>* *   * *</code> in the sieve. Getting rid of such patterns depends on two numbers rather than just one.
+Numbers will have to collaborate to get rid of all such patterns before they get into the <code>a**2</code> range of true candidates. A large number (&gt; 9) will only be able to at best hit one of the <code>*</code>s in this pattern, and fly by - leaving the other twin pair intact. Now, the coming numbers will have to take care of the next pair. Plus, you may find it interesting that even the pattern
+<code>* *   * *</code> has infinite repeats in any sieve - and the proof is near identical to the one given for simply twin pairs. What does that mean for the conjecture ? It means not only do you have to keep the twin primes at bay, but also the pattern <code>* *   * *</code> which can be thought of as one generator pattern for twin primes. Then there are patterns which act as generator patterns for the pattern <code>* *   * *</code> once you're looking at a large-enough number - so numbers will have to do even greater collaboration to keep those at bay.</p>
+<p>If these numbers truly behave randomly, they will fail and new twin prime candidates will continue to invade their <code>a**2</code> space.</p>
+
+</article> 
+
+<footer>
+<a href="https://www.github.com/mayankkamboj47">Github</a>
+mayankkamboj47 (at) gmail (dot) com
+</footer>
