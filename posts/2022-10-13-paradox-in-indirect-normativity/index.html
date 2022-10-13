@@ -1,0 +1,71 @@
+<!doctype html>
+
+<html lang=en>
+<meta charset='utf-8' />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indirect Normativity and Paradox</title>
+<style>
+    nav, nav ul{
+        list-style : none;
+        display : flex;
+        margin : 0;
+        padding : 0;
+    }
+    nav a {
+        display : block;
+        margin : 0.5rem 1rem;
+    }
+    nav a#logo{
+        margin-left : 0;
+    }
+    nav{
+        justify-content : space-between;
+        margin-bottom : 1.5rem;
+    }
+    body{
+        max-width : 1000px;
+        margin : 0 auto;
+        padding : 0 1rem;
+    }
+    footer { 
+        border-top : 1px solid gray;
+        padding : 1rem 0;
+        text-align : right;
+    }
+    .post-title{
+        margin-top : 0;
+    }
+</style>
+
+<body>
+
+<nav>
+    <a href="/" id="logo">Mayank Kamboj</a>
+    <ul>
+        <li><a href="/about">About</a></li>
+        <li><a href="/work">Work</a></li>
+    </ul>
+</nav>
+<article class='post'>
+  <h1>Indirect Normativity and Paradox</h1>
+  <p>When you specify an <abbr title="Artificial General Intelligence">AGI</abbr>'s utility function in terms of itself, like incase of <a href="">Indirect Normativity</a>, you might run into logical paradoxes.</p>
+<p>Say you set up AI's utility function to &quot;behave well&quot;. The AI is allowed to learn about what that command means, because it increases its chances of behaving well. Also, if it doesn't behave well in the process of learning, that behaviour will rank low on the (actual) utility function[1].</p>
+<p>I want to demonstrate that there is an opportunity for running into logical paradoxes here. Take this sentence</p>
+<pre><code>Believing in this sentence is bad behaviour
+</code></pre>
+<p>To a human it poses little challenge. I can believe this sentence and engage in bad behaviour (of believing it), or I can not believe in it (even though I would then believe it's not bad behaviour to believe in the sentence). The reason is that we don't have rigid utility functions.</p>
+<p>Consider a universe where the only possible task for the AGI is either believing in the sentence or not believing in it. If it believes the sentence, it has engaged in bad behaviour - not believing the sentence would've been better. If it doesn't believe the sentence, and instead believes that believing in the sentence is not bad behaviour, it will believe in it.</p>
+<p>Someone might postulate that an AGI would understand logical paradoxes better than any logician and avoid the trap. However, the AI is stuck in a universe with &quot;believe&quot; and &quot;not believe&quot; in the above scenario, while a lot of the proposed solutions to such paradoxes (like the Liar's paradox) try to break out of this binary view. It is possible that there is no solution to many of these paradoxes without breaking out of this binary outlook, in which case the AI is stuck with confusing choices.</p>
+<p>Is it possible for the AI to believe that believing the sentence is not bad behaviour, and yet not engage in believing it ? That sounds plausible for the given utility function, but the trap reappears on minor adjustments to the scenario. Change the utility function in a way that it either outputs <code>-1</code> or <code>1</code> as the measure. Now, we can alter the sentence to say  : &quot;Believing in this sentence gives a -1 on your utility function&quot;, bringing the problem back up again.</p>
+<p>Such logical paradoxes may mean that utility functions are incomplete - there are universes outside the domain of the utility function, even though it might be possible to build such universes in simulation and put the AGI inside. The outcomes the AGI will engage in if put in such universes need further thought.</p>
+<h2>Footnotes</h2>
+<ol>
+<li>There is another problem I have avoided - namely that things have a chronological sequence. The AI could do hazardous things, and discover the badness of its actions only when it is too late. Mandating knowledge of goodness/badness of some action to preceed the action itself wouldn't work - it would mean a frozen AI, since in order to start its process of discovery of good and bad, it wants to know whether the process of discovery itself is good or bad - but to know that one needs to go through a process of discovery</li>
+</ol>
+
+</article> 
+
+<footer>
+<a href="https://www.github.com/mayankkamboj47">Github</a>
+mayankkamboj47 (at) gmail (dot) com
+</footer>
