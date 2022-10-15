@@ -1,0 +1,131 @@
+<!doctype html>
+
+<html lang=en>
+<meta charset='utf-8' />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A Solution to the Paradox of the Surprise Exam</title>
+<style>
+    nav, nav ul{
+        list-style : none;
+        display : flex;
+        margin : 0;
+        padding : 0;
+    }
+    nav a {
+        display : block;
+        margin : 0.5rem 1rem;
+    }
+    nav a#logo{
+        margin-left : 0;
+    }
+    nav{
+        justify-content : space-between;
+        margin-bottom : 1.5rem;
+    }
+    body{
+        max-width : 1000px;
+        margin : 0 auto;
+        padding : 0 1rem;
+    }
+    footer { 
+        border-top : 1px solid gray;
+        padding : 1rem 0;
+        text-align : right;
+    }
+    .post-title{
+        margin-top : 0;
+    }
+</style>
+
+<body>
+
+<nav>
+    <a href="/" id="logo">Mayank Kamboj</a>
+    <ul>
+        <li><a href="/about">About</a></li>
+        <li><a href="/work">Work</a></li>
+    </ul>
+</nav>
+<article class='post'>
+  <h1>A Solution to the Paradox of the Surprise Exam</h1>
+  <p>Disjunction of two non-surprising things can surprise. If someone knows I will have an apple, and I have it, he won't be surprised. If the same person knows I will have an orange, he will not be surprised when I have it. However, when the same person knows I will have an apple or I will have an orange, he will not know exactly which one until I pick one and take a bite - and therein lies the element of surprise.</p>
+<p>A popular paradox, called the paradox of the surprise exam, misses this point. The solution proposed in this post fills in the gap.</p>
+<p>The paradox goes as follows. If you have to put a surprise exam in a book, you can't put it on the last page, because when readers turn to the second last page, they'll know that the surprise exam can only be on the last page since it isn't on any of the other pages. Second, you can't put it on the second last page either, because when readers reach the third last page, they will know that the exam is on the second last page, because it can't be on the last page (due to the reasoning given in the previous sentence). So they won't be surprised in this case either, and the exam can't be on the second last page. Now, you repeat and say that it can't be on the third last page, with similar reasoning. This sort of backward induction leads one to conclude that a surprise exam can't be on any of the pages in the book.</p>
+<p>The problem lies at the point when you start to argue that the exam can't be on the second last page, because when the person flips to the third last page she'll know already it's on the second last page. Not quite true. When you flip to the third last page, you have two possibilities left. One, the exam is on the second last page and you are not surprised. Second, the exam is on the last page and you are not surprised. However, remember, that disjunction of two non-surprising things can surprise.</p>
+<p>&quot;But the exam is not a surprise exam in either case!&quot;, one might complain. When someone is on the third last page, she imagines the exam to be on the next page. If it is, her beliefs are verified and the exam didn't surprise her. If it isn't, she is now sure it is on the last page, without having to flip to that page. So it can't be on either page, because it is by definition a surprise exam.</p>
+<p>To that, I say that the definition of &quot;surprise exam&quot; is flawed. There exists a strategy of reading the book, by which you're not surprised by the surprise exam. The strategy is merely a reverse-version of the backward induction that the paradox does from the last page to the first. I will proceed from the first page to the last.</p>
+<p>Assume the exam is on either the first page, or the remainder of the pages. If it is on the first page, you are not surprised, if it is on the remainder of the pages, you are not surprised.
+Wait what ? Why are you not surprised if it is on the remainder of the pages ?
+Because then it is either on the second page, in which case you are not surprised, or it is on the remainder of the pages, in which case you're not surprised.
+Why are you not surprised when it is on the remainder of the pages this time ?
+Because then it is either on the third page, or on the remainder pages. Either case, you are not surprised.
+But why ?
+...
+(a lot of cases later)
+...
+Because then you know the exam is on the last page, and you are not surprised.</p>
+<p>I hope I have succeeded in demonstrating that such a &quot;surprise exam&quot; by definition can't exist, as there exists a strategy to not be surprised by it. The element of surprise lies only in when you find out which side(s) of the disjunction is true. In the above case for example, say you are arguing &quot;the exam is either on the first page or the remainder, and in either case I am not surprised&quot;. Yet, you are surprised by which case comes out to be true - whether it is on the first page or the remainder. To the person who is using the more traditional backwards version fo the paradox, being on the third page doesn't guarantee the exam is on the second page. It merely guarantees that there is a next guess the reader can make for where the exam is (second-last-page), which is either correct, or if incorrect, leaves future opportunity for making a correct guess (last-page). But it's not until you have flipped to the second last page, that you find out in which way you'll be unsurprised.</p>
+<p>With all of that, let's see if we can spot the error loud and clear in the logical argument.</p>
+<pre><code>Z : The exam is on the last page
+Y : The exam is on the second last page
+A : You've read till 2nd last page w/o finding exam
+B : You've read till 3rd last page w/o finding exam
+
+(A -&gt; Z)                                    premise                                     1
+(A -&gt; Z) -&gt; notZ                            by defn. of surprise                X       2
+notZ                                        Modus ponens                                3
+
+B -&gt; Y or Z                                 premise                                     4
+B                                           premise                                     5
+Y or Z                                      modus ponens                                6
+Y                                           or OUT                                      7
+not Y                                       by defn. of surprise                 x      8
+
+
+Wait, I want to try something : 
+Y and (not Y)                               and IN                                      9
+1=0                                                                                     10
+</code></pre>
+<p>It is clear the argument is flawed. I hope I have set it up in a charitable fashion.
+Now let's try our proposed solution (in second order logic) :</p>
+<pre><code>Z : The exam is on the last page
+Y : The exam is on the second last page
+A : You've read till 2nd last page w/o finding exam
+B : You've read till 3rd last page w/o finding exam
+U : Unsurprising
+
+(A -&gt; Z)                                    premise                                     1
+(A -&gt; Z) -&gt; UZ                              new defn. of surprising                     2
+UZ                                          modus ponens                                3
+
+B -&gt; Y or Z                                 premise                                     1
+B                                           premise                                     2
+Y or Z                                      modus ponens                                3
+UY                                          new defn. of surprising                     4
+</code></pre>
+<p>But there is no way to proceed forward to a paradoxical situation unlike the above case. Problem solved ? Here are the axioms for &quot;surprising&quot;, which we have used above (the notation above has been simplified to get rid of integer values).</p>
+<pre><code>Cn : You have read from the first page till nth last page
+Zn : The exam is on nth last page
+U  : Unsurprising
+
+Under the universe of page numbers 1-n
+
+Rule 1 : Possibility of future prediction rules out surprise
+forall(x)forall(y)(((Cx =&gt; Zy) ^ (y &lt; x)) =&gt; UZy)
+
+Under the universe of propositions : 
+Rule 2 : Avoid surprise by assuming (what could be) the unsurprising proposition
+forall(P)forall(Q)((UP ^ (P or Q)) =&gt; UQ)
+
+Under the universe of propositions : 
+Rule 3 : Disjunction of two unsurprising things can be surprising
+forall(P)forall(Q)(((UP ^ UQ) =&gt; U(P or Q)) =&gt; (1=0))
+</code></pre>
+<p>If you have pointed out a flaw in my reasoning, or want to share something, please contact me. My email is in the footer.</p>
+
+</article> 
+
+<footer>
+<a href="https://www.github.com/mayankkamboj47">Github</a>
+mayankkamboj47 (at) gmail (dot) com
+</footer>
