@@ -52,10 +52,10 @@
 Conjecture. It's an interesting, unproven claim in mathematics that there are infinite primes of the kind <code>a-1, a+1</code>. I have never intensely conducted the study of primes, or even that of mathematics
 (my major is Computer Science),
 but that hasn't stopped me from delving into these areas as I have pleased, resulting in the idea presented below.</p>
-<p>The approach to proving a weak version of the conjecture (if it can be called that) occured to me during my discrete maths class when I had been toying with the conjecture a day prior. It was a failed attempt, but it has become more refined overtime.</p>
+<p>The approach to proving a weak version of the conjecture that I will demonstrate first came to me in a flash when studying Discrete Mathematics towards the end of my first year of college. I had been toying with the conjecture a day prior to that. It was a failed attempt, and the approach has come back to me again and again over the years - getting refined or just expressing itself differently.</p>
 <h1>A sieve</h1>
-<p>The approach begins with Erathosthenes' sieve, which lets you find the series of primes upto some number N. The idea goes as follows :</p>
-<p>Take the natural numbers from 2 upto <code>N</code>. Below, <code>N=49</code>.</p>
+<p>The approach begins with Erathosthenes' sieve, a 2000 year old idea of how to find the series of primes upto some N. The idea goes as follows :</p>
+<p>Take the natural numbers from 2 upto a particular limit <code>N</code>. Here, I'll take <code>N=49</code>.</p>
 <pre><code>2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 ... 41 42 43 44 45 46 47 48 49
 </code></pre>
 <p>Start at the first number</p>
@@ -73,25 +73,18 @@ you are here
   ^
   you are here
 </code></pre>
-<p>In short, we start at 2, sieve all multiples of two, and proceed to the next unsieved number.
-We can stop when we've reached a number greater than the square root of N.
-You may or may not have noticed that the numbers
+<p>You may or may not have noticed that the numbers
 above are almost-prime as we continue this process of removing (sieving) the multiples. To leave out just the primes, we'll have
-to repeat the process above till (including) square root of 49, which is 7  <sup><a href="#1whysquareroot">1. Why square root?</a><sup>.</p>
-<p>We'll modify this sieve in 2 ways now.</p>
-<p>First, I will remove the upper limit <code>N</code> (49 was the upper limit in the above case). This means we will have numbers stretching from 2 to infinity, and no matter how much you sieve, there are always composites lurking around the corner. Yet, as you sieve, the numbers will get progressively more &quot;prime-like&quot;. One could maybe say that the sequence &quot;approaches that of primes&quot;. I will exploit this property of getting more &quot;prime-like&quot;, and claim that whatever holds true no matter how much you sieve, must also hold true for the &quot;limit of the sequence&quot;, which is the sequence of primes.</p>
-<p>Second, since we are interested in the patterns between numbers and
-not the numbers themselves, I'll write a <code>*</code> in place of every number. This will help visually,
-and also hide details which are not important to our work below (saving us brainpower).</p>
+to repeat the process above till (including) square root of 49, which is 7  <sup><a href="">Why square root?</a><sup>.</p>
+<p>We'll modify this sieve in 2 ways now. First, I will take the situation where there is no upper limit when sieving (49 was the upper limit in the above case). Second, since we are interested in the patterns between numbers and
+not the numbers themselves, I'll write a <code>*</code> in place of every number, and that will save us brainpower to be able to keep going and looking at the patterns.</p>
 <p>Let's first extend the sieve.</p>
-<h1>Unbounded sieving</h1>
+<h1>Extending the sieve</h1>
 <p>In the previous case, we worked with natural numbers till 49. I'll now remove the &quot;till 49&quot; part. We start with the natural numbers as usual, leaving out 1.</p>
 <pre><code>2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 ... 
 </code></pre>
-<p>The sieving will proceed as usual mostly, but no matter how far you sieve now, the sequence never becomes completely prime. It might get &quot;infinitely close to prime&quot; - although I must admit that I do not know if limits can be formally
-applied to this case.</p>
-<p>I will often use the phrase &quot;sieve of k&quot; to refer to &quot;Sieve till numbers &lt;=k from among all
-natural numbers&quot;.</p>
+<p>There is no end to these numbers - they stretch to infinity. The sieving will proceed as usual mostly, but no matter how far you sieve now, the sequence never becomes completely prime. It might get &quot;infinitely close to prime&quot; - although I must admit that I do not know if limits can be formally
+applied to this case. I find it helpful to think of primes as the limit of calculating a sieve of <code>N</code> as <code>N-&gt;infinity</code> and but that is not necessary to understand the things coming up next.</p>
 <p>Here are some sieves with no upper bounds :</p>
 <p>The sieve of 2 :</p>
 <pre><code>2 3   5   7   9    11    13    15    17    19    21    23    25    ...
@@ -101,12 +94,10 @@ natural numbers&quot;.</p>
 </code></pre>
 <p>The sieve of 5 :</p>
 <pre><code>2 3   5   7        11    13          17    19          23          ...
-
-(Note : Only difference between sieve of 3 and 5 is the number 25 in the part shown above)
 </code></pre>
 <p>And so on.</p>
 <h1>Patterns, not numbers</h1>
-<p>As long as the prime numbers have a gap of 2, they're twin primes and their value is unimportant in the approach we're going to take.</p>
+<p>Since we're trying to prove &quot;Such twin primes extend infintely&quot;, I will try to get rid of anything that distracts from the distribution of the twins to the value of the twins - as long as the numbers have a gap of 2, they're twin primes and that's all we need.</p>
 <p>Instead of the number then, I'll write a <code>*</code>, and the sieved out numbers will be replaced with a blank space <code> </code>. Here are the sieves using this new notation.</p>
 <p>The natural numbers</p>
 <pre><code>*****************************************************************************************
@@ -123,88 +114,71 @@ natural numbers&quot;.</p>
 <p>The sieve of 7 :</p>
 <pre><code>** * *   * *   * *   *     * *     *   * *   *     *     * *     *   * *   * *   *     * *   
 </code></pre>
-<p>Beautiful. I'm also able to see the 'candidates' for twin primes in the sieve of 2 and 3. I'll call these <strong>candidate twin primes</strong> - candidate twin primes for a sieve of k refer to all pairs of the kind <code>* *</code> in the sieve of k. Not all candidate twins are actually twins, because some of them will be sieved out by the future primes. <strong>True twin primes</strong>, are twin primes in the k**2 leftmost places.</p>
+<p>Beautiful. I'm also able to see the candidates for twin primes in the sieve of 2 and 3. Then
+the incoming primes eliminate some of these twin primes going forward. We have two kinds of
+twin primes. One is <strong>candidate twin primes</strong> - this includes all pairs of the kind <code>* *</code> such as
+the ones you see in the sieve of 3. The other is <strong>true twin primes</strong>, which, for a sieve of x,
+are twin primes in the x**2 leftmost places.</p>
 <p>Instead of writing the infinitely recurring sieve of
 2, I will just write the repeating bit pattern with a non-repeating prefix. For example,
 two's sieve would be <code>**&lt; *&gt;</code>. Where the <code>&lt;&gt;</code> enclose the repeating bit pattern.
-<code>**&lt; *&gt;</code> is the same as <code>** &lt;* &gt;</code> which is the same as <code>** *&lt; *&gt;</code>, because once you get rid of the notation, all of these expressions give the same pattern. You can expand as much as or as little as you please, although you can't shorten the notation beyond a certain size.</p>
-<p>Say we're working with 2's sieve  <code>**&lt; *&gt;</code>. To get the sieve of the next number (3), we will write the pattern as 11&lt;01&gt; where <code>*</code> is replaced with 1 and space with 0. We expand the notation just enough to make sure that the number we're sieving with sits at the edge of the prefix. Call the numerical value of the number you're sieving with <code>a</code> (just count the
-number of <code>*</code>s before, and add 2 to get the numerical value for a <code>*</code>). Now, we will generate another bit pattern of the sort <code>&lt;1111... (a-1 times)0&gt;</code>, giving us two bit patterns. First, the pattern <code>11&lt;01&gt;</code> and the second, the pattern <code>&lt;1111... (a-1 times)0&gt;</code> of size a, where a is prime. We write these repeating portions of the bit patterns next to each other, and repeat each patterns as many times as necessary so that
-they are both the same size (this part will become clear in the demonstration to follow). You'll see that we have to repeat the a-sized pattern <code>size-of-the-repeating-part-in-the-first-pattern</code> times, and the first pattern's repeating part <code>a</code> times <a href="#2whyRepeatThisManyTimes">2 Why?</a>.</p>
-<pre><code>Sieve of 2's pattern : 
-*{* }
+<code>**&lt; *&gt;</code> is the same as <code>** &lt;* &gt;</code> which is the same as <code>** *&lt; *&gt;</code>, because once you get rid of the notation and write them fully extended they give the same pattern. You can expand as much as or as little as you please.</p>
+<p>To sieve ahead,  <code>**&lt; *&gt;</code> will be first be written as 11&lt;01&gt; where <code>*</code> is replaced with 1 and space with 0. We make sure that the <code>*</code> that corresponds to the number we're going to sieve with, is the last <code>*</code> in the prefix - here, this is the last of the two <code>*</code>s. We will then get the numerical value for the <code>*</code> we want to sieve for (just count the
+number of <code>*</code>s before, and add 2 to get the numerical value for a <code>*</code>) - call this value <code>a</code>. Now, we will generate another bit pattern of the sort <code>&lt;1111... (a-1 times)0&gt;</code>, giving us two bit patterns. First is the pattern <code>11&lt;01&gt;</code> and the second is the pattern <code>&lt;1111... (a-1 times)0&gt;</code> of size a, where a is prime. We write these repeating portions of the bit patterns next to each other, and repeat each patterns as many times as necessary so that
+they are both the same size (this part will become clear in the demonstration to follow). You'll see that we have to repeat the a-sized pattern <code>size-of-the-first-pattern</code> times, and the first pattern <code>a</code> times <a href="">Why?</a>.</p>
+<pre><code>{pattern for the sieve so far, repeated a times}
+{a pattern of size a, where the first a-1 digits are 1 and the last is a 0}
 
-Expand the notation, so that the number we'll sieve with next is at the edge of the brackets. 
-**{ *}
-Call this pattern-1
+= 
 
-Obtain the numerical representation of the number you're sieving (in this case you'll obtain 3). 
 
-Generate another pattern, same size as the number with which you're sieving, where the last value is a 0, and the rest are 1. You'll get 110, since we're sieving with 3. 
+01010101010101010101...010101010101010
+1111...(a-1 times)01111...(a-1 times)0
+</code></pre>
+<p>And now, we take a bitwise <code>and</code> to get the resultant pattern after sieving (the prefix will remain as it is).
+Incase of 2 and 3, I have demonstrated this below :</p>
+<pre><code>prefix : 11             # make sure the last 1 represents the number you're sieving for, here 3
+{01} repeated 3 times
+{110} repeated two times
 
-In pattern-1, convert * to 1, and spaces to 0. Write this and your generated pattern on top of each other
+=
 
-01
-110
-
-Now, repeat them as much as needed to make them the same size. 
-
+prefix : 11
 010101
-110110
-
-Take bitwise and to get : 
-
+110110            &amp;
+_______
 010100
+_______
 
-This is your pattern, and the prefix is the same as the prefix of pattern-1.  
+=
+prefix (same as before always): 11, with repeating 010100
+
+= 11{010100}
+= **{ * *  }
 </code></pre>
 <p>Converting from bitwise pattern notation to the star-space notation is not necessary, but I'll welcome anything that makes it more bearable to look at the series, and I'll therefore continue to use the <code>*</code> notation.</p>
-<h1>The proof</h1>
+<h1>What now ?</h1>
 <p>There is a twin prime pair in the repeating bit part in the resultant sieve above. If we can show that no matter how many times we repeat this process, there are going to be twin prime candidates in the repeating bit pattern, it will be the same as showing that there are infinite twin prime candidates. Let's do that.</p>
 <p>Here's the proof, by induction.</p>
 <p>Base : There is a twin prime in the repeating portion of the sieve of 2.</p>
 <p>Inductive hypothesis : There is at least one twin prime in the repeating portion of some sieve</p>
 <p>Inductive step  :</p>
 <p>The next prime <code>a</code> will generate a pattern that will be repeated <code>the-size-of-the-previous-pattern</code> times, and since there is one zero per repeat, there are going to be <code>the-size-of-the-previous-pattern</code> zeroes in this pattern.</p>
-<p>These zeroes will align themselves only once with each digit in the previous pattern <a href="#3whyZeroesWillAlignOnlyOnce">3 Why?</a>. The previous pattern repeats <code>a</code> times before we take the bitwise <code>and</code>, so there will be <code>a</code> repeats of the same twin pair. Of these <code>a</code> different repeats of the same twin prime pair, the number is going to only be able to destroy two maximum - because it can destroy only one number from its <code>a</code> sibils, leaving the other sibils intact in the forthcoming pattern. Therefore, it can destroy one number in one of the occurences of the twin pair, and another in the next occurence of the twin pair, still leaving <code>a-2</code> occurences intact for the next pattern.</p>
+<p>These zeroes will align themselves only once with each digit in the previous pattern <a href="">Why?</a>. The previous pattern repeats <code>a</code> times before we take the bitwise <code>and</code>, which means it is going to have <code>a</code> times the twin prime candidates as the previous pattern. Each number in the pattern will have <code>a</code> different sibils. Of the <code>a</code> different repeats of the same twin prime pair, the number is going to only be able to destroy two maximum - because it can destroy only one number from its <code>a</code> sibils, leaving the other sibils intact in the forthcoming pattern. Therefore, it can destroy one number in one of the occurences of the twin pair, and another in the next occurence of the twin pair, still leaving <code>a-2</code> occurences intact for the next pattern.</p>
 <h1>This doesn't prove the conjecture</h1>
-<p>This proves that no matter how much you sieve, there are going to be twin prime candidates in your resultant sieve for our version of the sieve.</p>
+<p>This proves that no matter how much you sieve, there are going to be twin prime candidates in your resultant sieve.</p>
 <p>More concisely, we've proven there are infinite <strong>twin prime candidates</strong> in any sieve.</p>
-<p>However, being a twin prime candidate is not the same as being a <strong>true twin prime</strong>. A <strong>candidate twin prime</strong> in <code>a</code>'s sieve is a <strong>true twin prime</strong> only if it is a candidate within <code>a**2</code> distance from the beginning of the sieve pattern.</p>
-<p>If the numbers were conspiring, they could keep the twin prime candidates at bay and never allow them to reach within <code>a**2</code> distance from the right, making the number of true twin primes finite, even though there are always candidate twin primes just across the <code>a**2</code> horizon.</p>
+<p>However, being a twin prime candidate is not the same as being a <strong>true twin prime</strong>. A <strong>candidate twin prime</strong> in <code>a</code>'s sieve is a <strong>true twin prime</strong> only if it is a candidate within <code>a**2</code> distance from the beginning of the sieve pattern - and we've been unsuccessful at proving that. If the numbers were conspiring, they could keep the twin prime candidates at bay and never allow them to reach within <code>a**2</code> distance from the right, making the number of true twin primes finite.</p>
 <p>However, these twin primes candidates are very randomly arranged if we're looking at the sieve of a large number. A single number will not be able to sieve the twin candidates away from the <code>a**2</code> range, because there are lots of tricky repeating patterns like</p>
 <pre><code>* *   * *
 </code></pre>
-<p>in the sieve. Getting rid of such patterns depends on two numbers rather than just one.  A large number (&gt; 9) will only be able to at best hit one of the <code>*</code>s in this pattern, and fly by - leaving the other twin pair intact. Some coming number will have to remove the next pair.</p>
+<p>in the sieve. Getting rid of such patterns depends on two numbers rather than just one.  A large number (&gt; 9) will only be able to at best hit one of the <code>*</code>s in this pattern, and fly by - leaving the other twin pair intact. The coming numbers will have to take care of the next pair. Thus the primes not only need to &quot;play smart&quot; themselves to keep destroying these twins, but they may also need some kind of reliance on other primes to finish their unfinished job.</p>
 <p>Plus, you may find it interesting that even the pattern</p>
 <pre><code>* *   * *
 </code></pre>
-<p>has infinite repeats in any sieve - and the proof is near identical to the one given for simply twin pairs. What does that mean for the conjecture ? It means not only do you have to keep the twin primes at bay, but also the pattern <code>* *   * *</code> which can be thought of as a generator pattern for twin primes. Then there are patterns which act as generator patterns for the pattern <pre>* *   * *</pre> once you're looking at a large-enough number - so numbers will have an even greater dependence on each other to keep those at bay.</p>
-<p>A more generalisable strategy would give an even stronger result. Because we can write proofs of the kind presented above for all sorts of patterns (&quot;* <em>&quot;, &quot;</em> *   * *&quot; etc.), a generalised strategy to prove that these patterns will inevitably also reach the n**2 space will settle
-conjectures like <a href="https://en.wikipedia.org/wiki/Twin_prime#Polignac's_conjecture">Polignac's</a></p>
-<p>Some reflections on how this could be done :</p>
-<ol>
-<li>We may have to abandon the '*' notation and work with the values of numbers. That will open up more possibilities.</li>
-<li>Yitang Zhang's discovery about there being some gap k &lt; 70M, for which there are infinite pairs, which has now been brought down to 200 something, and could be brought down further even to 6 ! This might be a useful result to us.</li>
-<li>Above method might be detached (and much clumsier !) than standard methods employed by number theorists. Using formal number theory and sieve theory, which might give us more tools to reason better about what happens to candidate twin primes, as well as simplify the reasoning I have stated above in this article (hopefully down to a single page).</li>
-</ol>
-<h1>Footnotes</h1>
-<h3 id="1whysquareroot">1. Why Square root ? </h3>
-If a number greater than the square root has to be multiplied with a number less than the square root to get n. So if k divides n, k is either less than the square root of n, or the number k is multiplied with to obtain n is less than the square root of n. Checking till square root of n then covers all possiblities of how n could be broken down into a,b such that a*b = n.
-<h3 id="2whyRepeatThisManyTimes">2. Why repeat this many times </h3>
-To make both patterns the same size, we repeat the patterns such that both have the size equal to the LCM of their individual sizes. Since the two sizes are co-prime (aka HCF = 1), LCM is the product. 
-<h3 id="3whyZeroesWillAlignOnlyOnce">3. Why zeroes will align only once </h3>
-Proof by contradiction. Assume zero aligns twice at some number k. 
-<p>Call size of pattern-1 s.
-For some integers x,y, which are both positive and less than p (you repeat pattern-1 p times), our assumption implies</p>
-<pre><code>p | sx + k 
-p | sy + k                ===&gt;
-p | s(x-y)
-
-p doesn't divide s. p can't divide x-y unless x=y. Our assumption is incorrect.  
-
-End of proof
-</code></pre>
+<p>has infinite repeats in any sieve - and the proof is near identical to the one given for simply twin pairs. What does that mean for the conjecture ? It means not only do you have to keep the twin primes at bay, but also the pattern <code>* *   * *</code> which can be thought of as one generator pattern for twin primes. Then there are patterns which act as generator patterns for the pattern <pre>* *   * *</pre> once you're looking at a large-enough number - so numbers will have an even greater dependence on each other to keep those at bay.</p>
+<p>One can imagine this as a game between primes trying to destroy twin primes, and the twin primes trying to get into the zone all the time. There are multiple layers of the rules, and we can observe the game between the primes and twins at those layers of rules. If any of the rules reveal that some of the twin prime candidates will inevitably keep reaching the <code>n**2</code> zone, we are done. If it is possible for the primes to destroy the twins at some particular layer of rules, we can go to a new layer of rules until we find one where the twins win out.</p>
+<p>If the primes do not conspire and sieve randomly, they will fail and new twin prime candidates will continue to invade their <code>a**2</code> space.</p>
 
 </article> 
 
