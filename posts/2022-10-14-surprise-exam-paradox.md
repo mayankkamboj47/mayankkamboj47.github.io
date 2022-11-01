@@ -86,8 +86,10 @@ Rule 2 : Avoid surprise by assuming (what could be) the unsurprising proposition
 forall(P)forall(Q)((UP ^ (P or Q)) => UQ)
 
 Under the universe of propositions : 
-Rule 3 : Disjunction of two unsurprising things can be surprising
-forall(P)forall(Q)(((UP ^ UQ) => U(P or Q)) => (1=0))
+Rule 3 : Disjunction of two different things is only unsurprising when P or Q form a tautology or contradiction. 
+
+forall(P)forall(Q)(U(P or Q) => ((P=Q) or (P=not(Q)))
+
 ```
 
 If you have pointed out a flaw in my reasoning, or want to share something, please contact me. My email is in the footer. 
