@@ -4,7 +4,9 @@ layout : html
 
 <h1>Hello</h1>
 
-I am happy to see you stumble upon this corner of the web. From here, you can either check out my [work](./work), or read the posts below. The [about](./about) section has some books I have enjoyed and found useful. 
+I am happy to see you stumble upon this corner of the web. I am a third year student at Ashoka University. I am also a teaching assistant for CS1201 : Data Structures under Professor Debayan Gupta. 
+
+From here, you can either check out my [work](./work), or read the posts below. The [about](./about) section has some books I have enjoyed and found useful. 
 
 <h1> Posts </h1>
 
