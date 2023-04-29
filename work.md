@@ -2,9 +2,11 @@
 layout : html
 ---
 
-## Research
-A Turing-Complete Subsitution Model of Computation
+## Research and Writing
 
+- Sleeping Beauty Problems [forthcoming] [Probability and Statistics, Philosophy]
+- A Substitution Based Model of Computation [forthcoming] [Computability theory]
+- For the sequence of primes 2, 3, ... p, there are infinite twin co-primes [forthcoming] [Mathematics, Number theory]
 
 ## Programming
 ### React : 
