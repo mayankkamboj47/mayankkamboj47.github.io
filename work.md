@@ -4,7 +4,7 @@ layout : html
 
 ## Research and Writing
 
-- Sleeping Beauty Problems [forthcoming] [Probability and Statistics, Philosophy]
+- [Why the P(H)=1/3 solution to sleeping beauty doesn't work](../posts/2023-05-11-why-onethird-solution-to-sleeping-beauty-doesnt-work) [Probability and Statistics, Philosophy]
 - A Substitution Based Model of Computation [forthcoming] [Computability theory]
 - For the sequence of primes 2, 3, ... p, there are infinite twin co-primes [forthcoming] [Mathematics, Number theory]
 
