@@ -15,6 +15,9 @@ ReactJS, CSS modules
 
 I decided to prop-drill the state and dispatch, creating a proto-version of a reducer before I read/knew about them. The theming system is flexible, and can handle lots of themes fast - just modify the CSS and add one line of 3 words to the Javascript code. Let CSS do what it does best.
 
+### For fun 
+[game-of-life](https://mayankkamboj47.github.io/game-of-life)
+John Conway's game of life
 
 ### Fullstack projects (MERN stack)
 [travel](https://www.github.com/mayankkamboj47/travel) and [shop](https://www.github.com/mayankkamboj47/shop)
