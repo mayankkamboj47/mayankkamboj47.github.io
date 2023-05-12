@@ -1,0 +1,105 @@
+---
+layout : post
+title  : A Substitution Model of Computation
+---
+String substitution is sufficient to create a model of computation as powerful as Turing machines. Let's create such a model.
+
+## The Model
+We start with a set S consisting of an infinite number of symbols. These symbols will be used to create the input and output strings, as well as the intermediate strings that result from the transformations we apply to the input in order to obtain the output. The reason for having an infinite set of symbols will become clear as we progress. Within this infinite symbol set, we also have the symbols "1" and "0". 
+
+Our input will be a string that contains sequences of 1s separated by 0s. Each sequence of 1s represents a number equal to the count of 1s in that sequence. For instance, if we have the input `5, 4`, it would be represented as "1111101111". The output, on the other hand, is a continuous string of 1s. The count of 1s in the output should be equal to the desired number we aim to obtain. 
+
+For example, a program that doubles the given number would produce "1111" for the input "11". Similarly, a program that multiplies two numbers together would generate "111111" for the input "110111" (which represents `2,3`).
+
+In order to manipulate the INPUT string, we have access to an operation called "sub," which allows us to substitute a specific substring with another substring. For instance, if we have the string "111," applying the line "sub 1 💙" would result in the output "💙💙💙." 
+
+Here is a brief program that doubles any given input:
+```
+sub 1 💙
+sub 💙 11
+```
+
+One could also write as shorthand
+```
+sub 1 11
+```
+where we assume that all instances of 1 are replaced with 11 at the same time. 
+ 
+Finally, the special symbols $\$$ and $\^$ allow us to refer to the start and the end of a string. For example, `sub 1$ 0` only replaces the 1 at the end of the string with a 0. If the string doesn't end in 1, it matches nothing. Similarly, the line `sub ^hi hello` only matches the starting `hi` in a string. If the input string was `hi hiroshi`, it would match just the starting `hi`, and not the `hi` in `hiroshi`. If the string doesn't start with `hi` it matches nothing. 
+
+## Turing completeness
+Can we perform every calculation possible with this model of computation ? This is a difficult question to answer, because it's difficult to formalise the idea of every calculation possible. A slightly easier question is whether it can perform every operation that a modern computer with infinite memory and compute could ever do. The answer is a YES. We prove this by showing that we can simulate Turing machines in our model, which is the strongest model of computation we know so far, and can emulate the modern computer. 
+
+A Turing machine consists of a tape of blocks, each with 1 or a 0 on it, provided as input, much like the input our model of computation takes. And it outputs much like our model of computation. There is huge difference in the process by which we arrive at the output in turing machines and the substitution model. Another, minor difference is that Turing machines are infinite, but even in our model, we can make as much space to work with as we need, by simply writing `sub $ 000`, which appends 3 0s at the end. 
+
+Turing machines also contain a head, which is always at a particular point on the tape, has the ability to do four operations : move right, move left, put a 1, put a 0. All instructions look like this : 
+In state X, if at <1 or 0> <operation>, and goto state Y. 
+
+We'll simulate these instructions in the substitution model. For this, first we'll need a representation of the head. We'll use a set of symbols to represent the head in different states. For each state, we'll have two symbols - one for "head at 1" and another for head at "0". 
+
+At the start of your computation, you can introduce the head with the following short program :
+```
+sub 1$ 💙
+sub 0$ ✅
+```
+💙 represents the head in state 0 and at bit 1, ✅ in state 0 at bit 0. To add more states, we just add more symbols, two per state - one for 1 and another for 0.
+
+As I mentioned above, Turing machines generally perform the following operation at every step : 
+`In state X, if at <1 or 0> <operation>, and goto state Y`. Without loss of generality, say that 💙 and ✅ represent the head in state X, at 1 and 0 respectively. And say that 🔥 represents the head in state Y at a 1, and 🏳️‍🌈 represents the head in state Y at a 0. 
+Here is how you can perform all the possible operations for a Turing machine: 
+```
+    If at a 1 : 
+        Going left : 
+            sub 1💙 🔥1
+            sub 0💙 🏳️‍🌈1
+        Going right :
+            sub 💙1 1🔥
+            sub 💙0 1🏳️‍🌈
+        Writing a 0 : 
+            sub 💙 🏳️‍🌈
+        Writing a 1 :
+            sub 💙 🔥
+    The case for 0 is identical, but ✅ will replace the 💙, and 0 will replace 1 in the
+    string to be substituted with
+```
+
+That was surprisingly easy ! But there is still one piece left. In a Turing machine, for every state, we cycle through the quadruples to see if a quadruple matches the state we're currently in. If it does, we execute the quadruple code. Otherwise, we stop. Because we've only translated the quadruples so far in our model of computation, we still need a way to cycle through them, and stop once nothing matches. We could either make this cycling implicit like in the case of Turing machines. If we want to make it explicit, which has its advantages, we will need to introduce a `repeat till no change` operator : 
+```
+repeat till no change : 
+    <translated quadruples here>
+```
+We only need this `repeat till no change` operator once in the entire program, to cycle through the translated quadruples. This finishes the proof of equivalence to Turing machines. Here is a translation of a simple piece of code that adds a 1 at the start of the input:
+```
+replace 1$ 💙                                       # introduces the head at the right end
+repeat till no change :                             #  translated quadruples begin here :
+    replace 1💙 💙1
+    replace ^💙 ✅1                                # a01La0
+    replace ✅  🔥                                  # a001a1
+replace 🔥 1                                        # some closing code to ensure only 1 and 0
+                                                    # remain
+```
+With this example, we close the section on Turing completeness. Direct translation is often not optimal. For example, for the above problem of prepending 1, optimal way is the one-liner `sub ^ 1`, where we exploit the fact that `^` alone would match the start of the string, but no characters, which means `sub ^ x` is akin to saying `prepend x`.
+
+## The fun of substitution
+
+Some operations have a very appealing way of being done in the said model of computation. For example, addition of a constant, say 5, is simply `sub $ 11111`, compared to the quadruple hell we get in the Turing machines - the number of quadruples grows with the size of the constant we are adding ! Moreover, it's closer to how humans naturally think about adding in stick math - Given a bunch of sticks and another bunch of sticks, just put them close together and done !
+Multiplication with constants is equally intuitive : 
+`sub 1 111`, which multiplies with 3. By mapping each `1` to `111` we triple the total count of 1s. If you think that substituting "all at once" is cheating, you'll still not complain to this equivalent program : 
+```
+sub 1 🔥
+sub 🔥 111
+```
+Not a one-liner, but still quite elegant. We map each 1 to a 🔥 which then maps to 111. Again, it is a very appealing way of visualising multiplication. What about exponentiation ? Here's how to calculate 2^x. The intuition is to keep doubling a number which stars from 1, and decrementing the input, until only the first number remains. 
+```
+sub ^ 🔥                            # Introduce 🔥, which will multiply in number to 2^x
+repeat till no change : 
+    replace 🔥1 🔥                  # decrement the number
+    repeat till no change :         # if none of the number is left, replace 🔥 with 'S'
+        replace 🔥$ S
+        replace 🔥S SS
+    replace 🔥 🔥🔥                 # double 🔥 !
+replace S 1                         # final fix
+```
+Okay, I cheated with a double repeat, but the program is really very intuitive still. I could not have cheated, and made my program a little bit wobbly and confusing.
+
+I hope that the above examples have convinced you that what Turing machine does in a lot of quadruples is often concise in the string substitution model. 

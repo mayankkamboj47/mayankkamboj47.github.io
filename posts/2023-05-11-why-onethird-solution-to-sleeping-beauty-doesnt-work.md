@@ -9,7 +9,7 @@ title : Why the P(H)=1/3 solution to Sleeping Beauty Doesn't Work
 
 There are multiple points of confusion in the [Sleeping Beauty Problem](https://www.princeton.edu/~adame/papers/sleeping/sleeping.pdf). These, combined with (what I will show to be) the wrong solution that the original paper argued for, has laid perfect ground for a never-ending debate. Below, I hope to settle some of this debate. 
 
-Let's begin by introducing the problem. Beauty wants to sleep for 2 days in a row - Monday and Tuesday. Her mother objects, agreeing only if she plays a game with her. The mother will toss a coin. If its a heads, she'll wake her up on a Monday and then put her back to sleep shortly after. If its a tails, she'll do the same on Tuesday. Beauty doesn't remember anything that happens when she is drowsy, which means she'll forget her previous awakenings. On waking up, what probability should beauty assign to heads ? 
+Let's begin by introducing the problem. Beauty wants to sleep for 2 days in a row - Monday and Tuesday. Her mother objects, agreeing only if she plays a game with her. The mother will toss a coin. If its a heads, she'll wake her up on a Monday and then put her back to sleep shortly after. If its a tails, she'll do the same on Tuesday too. Beauty doesn't remember anything that happens when she is drowsy, which means she'll forget her previous awakenings. On waking up, what probability should beauty assign to heads ? 
 
 The problem may seem strange to you because it indeed is. It's a natural instinct to give this solution from Beauty's perspective : "Mother would have woken me up no matter what the coin showed. So waking up tells me nothing. The coin is fair, I should guess P(H)=1/2". Elga, however, says that P(H) should be 1/3. Here is his argument. 
 
@@ -25,7 +25,7 @@ $3. P(H|Mon) = P(T|Mon)$
 
 __Justification__ : Since Beauty is woken up on Monday in both cases, the coin could be tossed on a Monday without changing anything about the experiment. Say it is tossed on Monday then and Beauty knows about it. 
 
-These together give $P(H)=\frac{1}{3}$, for full working refer to Elga. It's usually interesting to stop at this point and see where Elga went wrong. Because of the way I have stated his argument, it's clear that the fault lies with one of the premises. 
+These together give $P(H)=\frac{1}{3}$. For full working refer to [1]. It's usually interesting to stop at this point and see where Elga went wrong. Because of the way I have stated his argument, it's clear that the fault lies with one of the premises. 
 
 In this case, it's the third premise. First, and the weakest argument I'll make against it, is that it doesn't matter whether the coin is tossed on Monday or Tuesday *if Beauty doesn't know about it*. If she does, Monday carries additional information for her that it didn't before. Elga's justification contains no consideration for this possibility. He merely says : 
 > [Beauty's] credence upon awakening in the coin's landing Heads ought to be the same regardless of whether [the Mother] use[s] method (1) or (2). So without loss of generality, suppose [she] use[s] - and [Beauty] knows that she uses - method 2. 
