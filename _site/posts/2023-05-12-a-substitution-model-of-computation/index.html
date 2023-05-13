@@ -49,7 +49,8 @@
 <link rel="stylesheet" href="https://unpkg.com/katex@latest/dist/katex.min.css" />
 <article class='post'>
   <h1>A Substitution Model of Computation</h1>
-  <p>String substitution is sufficient to create a model of computation as powerful as Turing machines. Let's create such a model.</p>
+  <p>String substitution is sufficient to create a model of computation as powerful as Turing machines. The resultant model uses a lesser number of primitives, and programs written in it are
+much easier for humans to read.</p>
 <h2>The Model</h2>
 <p>We start with a set S consisting of an infinite number of symbols. These symbols will be used to create the input and output strings, as well as the intermediate strings that result from the transformations we apply to the input in order to obtain the output. The reason for having an infinite set of symbols will become clear as we progress. Within this infinite symbol set, we also have the symbols &quot;1&quot; and &quot;0&quot;.</p>
 <p>Our input will be a string that contains sequences of 1s separated by 0s. Each sequence of 1s represents a number equal to the count of 1s in that sequence. For instance, if we have the input <code>5, 4</code>, it would be represented as &quot;1111101111&quot;. The output, on the other hand, is a continuous string of 1s. The count of 1s in the output should be equal to the desired number we aim to obtain.</p>
@@ -65,8 +66,8 @@ sub 💙 11
 <p>where we assume that all instances of 1 are replaced with 11 at the same time.</p>
 <p>Finally, the special symbols <span class="katex-error" title="ParseError: KaTeX parse error: Can&#x27;t use function &#x27;$&#x27; in math mode at position 1: $̲" style="color:#cc0000">$</span> and <span class="katex-error" title="ParseError: KaTeX parse error: Expected group after &#x27;^&#x27; at position 1: ^̲" style="color:#cc0000">^</span> allow us to refer to the start and the end of a string. For example, <code>sub 1$ 0</code> only replaces the 1 at the end of the string with a 0. If the string doesn't end in 1, it matches nothing. Similarly, the line <code>sub ^hi hello</code> only matches the starting <code>hi</code> in a string. If the input string was <code>hi hiroshi</code>, it would match just the starting <code>hi</code>, and not the <code>hi</code> in <code>hiroshi</code>. If the string doesn't start with <code>hi</code> it matches nothing.</p>
 <h2>Turing completeness</h2>
-<p>Can we perform every calculation possible with this model of computation ? This is a difficult question to answer, because it's difficult to formalise the idea of every calculation possible. A slightly easier question is whether it can perform every operation that a modern computer with infinite memory and compute could ever do. The answer is a YES. We prove this by showing that we can simulate Turing machines in our model, which is the strongest model of computation we know so far, and can emulate the modern computer.</p>
-<p>A Turing machine consists of a tape of blocks, each with 1 or a 0 on it, provided as input, much like the input our model of computation takes. And it outputs much like our model of computation. There is huge difference in the process by which we arrive at the output in turing machines and the substitution model. Another, minor difference is that Turing machines are infinite, but even in our model, we can make as much space to work with as we need, by simply writing <code>sub $ 000</code>, which appends 3 0s at the end.</p>
+<p>Can we perform every calculation possible with this model of computation ? This is a difficult question to answer, because it's difficult to formalise the idea of every calculation possible. A slightly easier question is whether it can perform every operation that a modern computer with infinite memory and compute could ever do. The answer is a YES. We prove this by showing that we can simulate Turing machines - the strongest model of computation we know - in our model.</p>
+<p>A Turing machine consists of a tape of blocks, each with 1 or a 0 on it, provided as input, much like the input our model of computation takes. And it outputs much like our model of computation. There is huge difference in the process by which a turing machine comes to the final answer, and the process by which our model does so. Another, minor difference is that Turing machines start with an infinite tape. In our model, we start with finite space, but we can add more finite amount of storage by simply writing a command such as <code>sub $ 000</code>, which appends 3 0s at the end.</p>
 <p>Turing machines also contain a head, which is always at a particular point on the tape, has the ability to do four operations : move right, move left, put a 1, put a 0. All instructions look like this :
 In state X, if at &lt;1 or 0&gt; <operation>, and goto state Y.</p>
 <p>We'll simulate these instructions in the substitution model. For this, first we'll need a representation of the head. We'll use a set of symbols to represent the head in different states. For each state, we'll have two symbols - one for &quot;head at 1&quot; and another for head at &quot;0&quot;.</p>
@@ -92,7 +93,7 @@ Here is how you can perform all the possible operations for a Turing machine:</p
     The case for 0 is identical, but ✅ will replace the 💙, and 0 will replace 1 in the
     string to be substituted with
 </code></pre>
-<p>That was surprisingly easy ! But there is still one piece left. In a Turing machine, for every state, we cycle through the quadruples to see if a quadruple matches the state we're currently in. If it does, we execute the quadruple code. Otherwise, we stop. Because we've only translated the quadruples so far in our model of computation, we still need a way to cycle through them, and stop once nothing matches. We could either make this cycling implicit like in the case of Turing machines. If we want to make it explicit, which has its advantages, we will need to introduce a <code>repeat till no change</code> operator :</p>
+<p>That was surprisingly easy ! But there is still one piece left. In a Turing machine, for every state, we cycle through the quadruples to see if a quadruple matches the state we're currently in. If it does, we execute the quadruple code. Otherwise, we stop. We've only translated the quadruples so far. We still need a way to cycle through them, and stop once nothing matches. We could either make this cycling implicit like in the case of Turing machines. If we want to make it explicit, which has its advantages, we will need to introduce a <code>repeat till no change</code> operator :</p>
 <pre><code>repeat till no change : 
     &lt;translated quadruples here&gt;
 </code></pre>
@@ -106,14 +107,15 @@ replace 🔥 1                                        # some closing code to ens
                                                     # remain
 </code></pre>
 <p>With this example, we close the section on Turing completeness. Direct translation is often not optimal. For example, for the above problem of prepending 1, optimal way is the one-liner <code>sub ^ 1</code>, where we exploit the fact that <code>^</code> alone would match the start of the string, but no characters, which means <code>sub ^ x</code> is akin to saying <code>prepend x</code>.</p>
-<h2>The fun of substitution</h2>
-<p>Some operations have a very appealing way of being done in the said model of computation. For example, addition of a constant, say 5, is simply <code>sub $ 11111</code>, compared to the quadruple hell we get in the Turing machines - the number of quadruples grows with the size of the constant we are adding ! Moreover, it's closer to how humans naturally think about adding in stick math - Given a bunch of sticks and another bunch of sticks, just put them close together and done !
+<h2>The joy of substitution</h2>
+<p>The way operations are done in the substitution model is intuitive, and usually pretty short. For example, addition of a constant, say 5, is simply <code>sub $ 11111</code>, compared to the quadruple hell we get in the Turing machines where the number of quadruples grows with the size of the constant we are adding ! Moreover, it's closer to how humans naturally think about adding in stick math - Given a bunch of sticks and another bunch of sticks, just put them close together and done !
 Multiplication with constants is equally intuitive :
 <code>sub 1 111</code>, which multiplies with 3. By mapping each <code>1</code> to <code>111</code> we triple the total count of 1s. If you think that substituting &quot;all at once&quot; is cheating, you'll still not complain to this equivalent program :</p>
 <pre><code>sub 1 🔥
 sub 🔥 111
 </code></pre>
-<p>Not a one-liner, but still quite elegant. We map each 1 to a 🔥 which then maps to 111. Again, it is a very appealing way of visualising multiplication. What about exponentiation ? Here's how to calculate 2^x. The intuition is to keep doubling a number which stars from 1, and decrementing the input, until only the first number remains.</p>
+<p>Not a one-liner, but still quite elegant. We map each 1 to a 🔥 which then maps to 111. Again, it is a very appealing way of visualising multiplication.</p>
+<p>What about exponentiation ? Here's how to calculate 2^x. The intuition is to keep doubling a number which starts from 1, and decrementing the input, until only the former number remains.</p>
 <pre><code>sub ^ 🔥                            # Introduce 🔥, which will multiply in number to 2^x
 repeat till no change : 
     replace 🔥1 🔥                  # decrement the number
@@ -125,6 +127,8 @@ replace S 1                         # final fix
 </code></pre>
 <p>Okay, I cheated with a double repeat, but the program is really very intuitive still. I could not have cheated, and made my program a little bit wobbly and confusing.</p>
 <p>I hope that the above examples have convinced you that what Turing machine does in a lot of quadruples is often concise in the string substitution model.</p>
+<p>To conclude, the model of computation with substitution and &quot;repeat till no change&quot; allows us to
+express programs in a more concise way. In contrast to the standard approach to creating programming languages, which give about conciseness by adding a lot of primitives, our model of computation works with just 2 primitives. By showing the Turing-completeness of this model of computation, we can perhaps also dare say that something so fundamental as substitution is also very powerful - so much so that it maybe all you need if you're open to cycling through your instructions repeatedly.</p>
 
 </article> 
 
