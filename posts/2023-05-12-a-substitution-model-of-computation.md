@@ -2,17 +2,15 @@
 layout : post
 title  : A Substitution Model of Computation
 ---
-String substitution is sufficient to create a model of computation as powerful as Turing machines. The resultant model uses a lesser number of primitives, and programs written in it are
-much easier for humans to read.
+String substitution is sufficient to create a model of computation as powerful as Turing machines. The model uses a lesser number of basic operations, and programs written in it are much easier for humans to understand. 
 
 ## The Model
-We start with a set S consisting of an infinite number of symbols. These symbols will be used to create the input and output strings, as well as the intermediate strings that result from the transformations we apply to the input in order to obtain the output. The reason for having an infinite set of symbols will become clear as we progress. Within this infinite symbol set, we also have the symbols "1" and "0". 
+We start with a set S that contains infinite symbols. These symbols will be used to create the input and output strings, as well as the intermediate strings that result from the transformations we apply to the input. The reason for having an infinite set of symbols will become clear in the section on Turing completeness. Within this infinite symbol set, we also have the symbols "1" and "0". 
 
-Our input will be a string that contains sequences of 1s separated by 0s. Each sequence of 1s represents a number equal to the count of 1s in that sequence. For instance, if we have the input `5, 4`, it would be represented as "1111101111". The output, on the other hand, is a continuous string of 1s. The count of 1s in the output should be equal to the desired number we aim to obtain. 
-
+The input is a string of 1s separated by 0s. Each sequence of 1s represents a number equal to the count of 1s in that sequence. For instance, if we have the input `5, 4`, it would be represented as "1111101111". The output is a continuous string of 1s, which represents the number equal to the count of 1s in the string. 
 For example, a program that doubles the given number would produce "1111" for the input "11". Similarly, a program that multiplies two numbers together would generate "111111" for the input "110111" (which represents `2,3`).
 
-In order to manipulate the INPUT string, we have access to an operation called "sub," which allows us to substitute a specific substring with another substring. For instance, if we have the string "111," applying the line "sub 1 💙" would result in the output "💙💙💙." 
+To manipulate the INPUT string, we have an operation called "sub" which allows us to substitute a specific substring with another substring. For instance applying the one lien program "sub 1 💙" to the input "111" would result in the output "💙💙💙" . 
 
 Here is a brief program that doubles any given input:
 ```
@@ -29,12 +27,12 @@ where we assume that all instances of 1 are replaced with 11 at the same time.
 Finally, the special symbols $\$$ and $\^$ allow us to refer to the start and the end of a string. For example, `sub 1$ 0` only replaces the 1 at the end of the string with a 0. If the string doesn't end in 1, it matches nothing. Similarly, the line `sub ^hi hello` only matches the starting `hi` in a string. If the input string was `hi hiroshi`, it would match just the starting `hi`, and not the `hi` in `hiroshi`. If the string doesn't start with `hi` it matches nothing. 
 
 ## Turing completeness
-Can we perform every calculation possible with this model of computation ? This is a difficult question to answer, because it's difficult to formalise the idea of every calculation possible. A slightly easier question is whether it can perform every operation that a modern computer with infinite memory and compute could ever do. The answer is a YES. We prove this by showing that we can simulate Turing machines - the strongest model of computation we know - in our model.
+Can we perform every calculation possible with this model of computation ? This is a difficult question to answer because it's difficult to formalise the idea of every calculation possible. A slightly easier question is whether it can perform every operation that a modern computer with infinite memory and compute could perform. The answer is a YES. We prove this by showing that we can simulate Turing machines, the most powerful model of computation known, using our model. 
 
-A Turing machine consists of a tape of blocks, each with 1 or a 0 on it, provided as input, much like the input our model of computation takes. And it outputs much like our model of computation. There is huge difference in the process by which a turing machine comes to the final answer, and the process by which our model does so. Another, minor difference is that Turing machines start with an infinite tape. In our model, we start with finite space, but we can add more finite amount of storage by simply writing a command such as `sub $ 000`, which appends 3 0s at the end. 
+A Turing machine consists of a tape with blocks, each containing a 1 or a 0, similar to the input of our computation model. It produces output in a similar way to our model. There are significant differences in the processes used by Turing machines and our model to arrive at the final answer. Another minor difference is that Turing machines start with an infinite tape, while our model starts with finite space. However, we can add additional storage by writing a command. For example, the command "sub $ 000" appends three 0s at the end.
 
 Turing machines also contain a head, which is always at a particular point on the tape, has the ability to do four operations : move right, move left, put a 1, put a 0. All instructions look like this : 
-In state X, if at <1 or 0> <operation>, and goto state Y. 
+In state X, if at <1 or 0>, perform one of the 4 operations, and goto state Y. 
 
 We'll simulate these instructions in the substitution model. For this, first we'll need a representation of the head. We'll use a set of symbols to represent the head in different states. For each state, we'll have two symbols - one for "head at 1" and another for head at "0". 
 
