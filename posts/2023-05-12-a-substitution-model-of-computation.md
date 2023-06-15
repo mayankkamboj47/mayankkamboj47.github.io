@@ -34,7 +34,7 @@ A Turing machine consists of a tape with blocks, each containing a 1 or a 0, sim
 Turing machines also contain a head, which is always at a particular point on the tape, has the ability to do four operations : move right, move left, put a 1, put a 0. All instructions look like this : 
 In state X, if at <1 or 0>, perform one of the 4 operations, and goto state Y. 
 
-We'll simulate these instructions in the substitution model. For this, first we'll need a representation of the head. We'll use a set of symbols to represent the head in different states. For each state, we'll have two symbols - one for "head at 1" and another for head at "0". 
+We'll simulate these instructions in the substitution model. For this, first we'll need a representation of the head. We'll use a set of symbols to represent the head in different states. For each state, we'll have two symbols - one for "head at 1" and another for "head at 0". 
 
 At the start of your computation, you can introduce the head with the following short program :
 ```
