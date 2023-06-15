@@ -69,7 +69,7 @@ chg 💙 11
 <p>A Turing machine consists of a tape with blocks, each containing a 1 or a 0, similar to the input of our computation model. It produces output in a similar way to our model. There are significant differences in the processes used by Turing machines and our model to arrive at the final answer. Another minor difference is that Turing machines start with an infinite tape, while our model starts with finite space. However, we can add additional storage by writing a command. For example, the command &quot;chg $ 000&quot; appends three 0s at the end.</p>
 <p>Turing machines also contain a head, which is always at a particular point on the tape, has the ability to do four operations : move right, move left, put a 1, put a 0. All instructions look like this :
 In state X, if at &lt;1 or 0&gt;, perform one of the 4 operations, and goto state Y.</p>
-<p>We'll simulate these instructions in the substitution model. For this, first we'll need a representation of the head. We'll use a set of symbols to represent the head in different states. For each state, we'll have two symbols - one for &quot;head at 1&quot; and another for head at &quot;0&quot;.</p>
+<p>We'll simulate these instructions in the substitution model. For this, first we'll need a representation of the head. We'll use a set of symbols to represent the head in different states. For each state, we'll have two symbols - one for &quot;head at 1&quot; and another for &quot;head at 0&quot;.</p>
 <p>At the start of your computation, you can introduce the head with the following short program :</p>
 <pre><code>chg 1$ 💙
 chg 0$ ✅
