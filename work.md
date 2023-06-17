@@ -19,6 +19,9 @@ I decided to prop-drill the state and dispatch, creating a proto-version of a re
 [game-of-life](https://mayankkamboj47.github.io/game-of-life)
 John Conway's game of life
 
+[minimax-playground](https://mayankkamboj47.github.io/minimax)
+A demonstration of the minimax algorithm on 2 games. Check out : https://www.github.com/mayankkamboj47/minimax to see the code, or see the live demo [here](https://mayankkamboj47.github.io/minimax).
+
 ### Fullstack projects (MERN stack)
 [travel](https://www.github.com/mayankkamboj47/travel) and [shop](https://www.github.com/mayankkamboj47/shop)
 
