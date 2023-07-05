@@ -3,19 +3,11 @@ title: About
 layout : html
 ---
 
-# About this website
+# You can see more about me here
 
-A small cup of the soup of thoughts, projects and writings in my head.
+### [Github](https://www.github.com/mayankkamboj47)
 
-I found these other websites and books great too : 
+### [Resume](https://docs.google.com/document/d/14tmTMbkGnUWsaqih7dzr5q0qoyx9bkgOUr3UV5HWOVA/edit)
 
-## Websites
-
-- [Effective Altruism](https://www.effectivealtruism.org/)
-- [Tara Brach](https://www.tarabrach.com/)
-
-## Books
-
-- Structure and Interpretation of Computer Programs
-- Architecture of Open Source Applications
-- A Guide to the Good Life : The Ancient Art of Stoic Joy by William B. Irvine
+I'm not on LinkedIn, or any other networking/social media application. For reading terms of service of these websites, I use
+[TOSDR](https://www.tosdr.org)
