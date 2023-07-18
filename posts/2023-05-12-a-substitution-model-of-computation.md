@@ -10,12 +10,12 @@ We start with a set S that contains infinite symbols. These symbols will be used
 The input is a string of 1s separated by 0s. Each sequence of 1s represents a number equal to the count of 1s in that sequence. For instance, if we have the input `5, 4`, it would be represented as "1111101111". The output is a continuous string of 1s, which represents the number equal to the count of 1s in the string. 
 For example, a program that doubles the given number would produce "1111" for the input "11". Similarly, a program that multiplies two numbers together would generate "111111" for the input "110111" (which represents `2,3`).
 
-To manipulate the INPUT string, we have an operation called "chg" (read as : change) which allows us to substitute a specific substring with another substring. For instance applying the one line program "chg 1 💙" to the input "111" would result in the output "💙💙💙" . 
+To manipulate the INPUT string, we have an operation called "chg" (read as : change) which allows us to substitute a specific substring with another substring. For instance applying the one line program "chg 1 🔵" to the input "111" would result in the output "🔵🔵🔵" . 
 
 Here is a brief program that doubles any given input:
 ```
-chg 1 💙
-chg 💙 11
+chg 1 🔵
+chg 🔵 11
 ```
 
 One could also write as shorthand
@@ -38,27 +38,27 @@ We'll simulate these instructions in the substitution model. For this, first we'
 
 At the start of your computation, you can introduce the head with the following short program :
 ```
-chg 1$ 💙
-chg 0$ ✅
+chg 1$ 🔵
+chg 0$ 🟢
 ```
-💙 represents the head in state 0 and at bit 1, ✅ in state 0 at bit 0. To add more states, we just add more symbols, two per state - one for 1 and another for 0.
+🔵 represents the head in state 0 and at bit 1, 🟢 in state 0 at bit 0. To add more states, we just add more symbols, two per state - one for 1 and another for 0.
 
 As I mentioned above, Turing machines generally perform the following operation at every step : 
-`In state X, if at <1 or 0> <operation>, and goto state Y`. Without loss of generality, say that 💙 and ✅ represent the head in state X, at 1 and 0 respectively. And say that 🔥 represents the head in state Y at a 1, and 🏳️‍🌈 represents the head in state Y at a 0. 
+`In state X, if at <1 or 0> <operation>, and goto state Y`. Without loss of generality, say that 🔵 and 🟢 represent the head in state X, at 1 and 0 respectively. And say that 🔴 represents the head in state Y at a 1, and 🔶 represents the head in state Y at a 0. 
 Here is how you can perform all the possible operations for a Turing machine: 
 ```
     If at a 1 : 
         Going left : 
-            chg 1💙 🔥1
-            chg 0💙 🏳️‍🌈1
+            chg 1🔵 🔴1
+            chg 0🔵 🔶1
         Going right :
-            chg 💙1 1🔥
-            chg 💙0 1🏳️‍🌈
+            chg 🔵1 1🔴
+            chg 🔵0 1🔶
         Writing a 0 : 
-            chg 💙 🏳️‍🌈
+            chg 🔵 🔶
         Writing a 1 :
-            chg 💙 🔥
-    The case for 0 is identical, but ✅ will replace the 💙, and 0 will replace 1 in the
+            chg 🔵 🔴
+    The case for 0 is identical, but 🟢 will replace the 🔵, and 0 will replace 1 in the
     string to be substituted with
 ```
 
@@ -69,12 +69,12 @@ repeat till no change :
 ```
 We only need this `repeat till no change` operator once in the entire program, to cycle through the translated quadruples. This finishes the proof of equivalence to Turing machines. Here is a translation of a simple piece of code that adds a 1 at the start of the input:
 ```
-chg 1$ 💙                                        introduces the head at the right end
+chg 1$ 🔵                                        introduces the head at the right end
 repeat till no change :                          translated quadruples begin here :
-    chg 1💙 💙1
-    chg ^💙 ✅1                                  a01La0
-    chg ✅  🔥                                   a001a1
-chg 🔥 1                                        some closing code to ensure only 1 and 0 remain
+    chg 1🔵 🔵1
+    chg ^🔵 🟢1                                  a01La0
+    chg 🟢  🔴                                   a001a1
+chg 🔴 1                                        some closing code to ensure only 1 and 0 remain
 ```
 With this example, we close the section on Turing completeness. Direct translation is often not optimal. For example, for the above problem of prepending 1, optimal way is the one-liner `chg ^ 1`, where we exploit the fact that `^` alone would match the start of the string, but no characters, which means `chg ^ x` is akin to saying `prepend x`.
 
@@ -84,20 +84,20 @@ The way operations are done in the substitution model is intuitive, and usually 
 Multiplication with constants is equally intuitive : 
 `chg 1 111`, which multiplies with 3. By mapping each `1` to `111` we triple the total count of 1s. If you think that substituting "all at once" is cheating, you'll still not complain to this equivalent program : 
 ```
-chg 1 🔥
-chg 🔥 111
+chg 1 🔴
+chg 🔴 111
 ```
-Not a one-liner, but still quite elegant. We map each 1 to a 🔥 which then maps to 111. Again, it is a very appealing way of visualising multiplication. 
+Not a one-liner, but still quite elegant. We map each 1 to a 🔴 which then maps to 111. Again, it is a very appealing way of visualising multiplication. 
 
 What about exponentiation ? Here's how to calculate 2^x. The intuition is to keep doubling a number which starts from 1, and decrementing the input, until only the former number remains. 
 ```
-chg ^ 🔥                            # Introduce 🔥, which will multiply in number to 2^x
+chg ^ 🔴                            # Introduce 🔴, which will multiply in number to 2^x
 repeat till no change : 
-    chg 🔥1 🔥                  # decrement the number
-    repeat till no change :         # if none of the number is left, replace 🔥 with 'S'
-        chg 🔥$ S
-        chg 🔥S SS
-    chg 🔥 🔥🔥                 # double 🔥 !
+    chg 🔴1 🔴                  # decrement the number
+    repeat till no change :         # if none of the number is left, replace 🔴 with 'S'
+        chg 🔴$ S
+        chg 🔴S SS
+    chg 🔴 🔴🔴                 # double 🔴 !
 chg S 1                         # final fix
 ```
 Okay, I cheated with a double repeat, but the program is really very intuitive still. I could not have cheated, and made my program a little bit wobbly and confusing.
