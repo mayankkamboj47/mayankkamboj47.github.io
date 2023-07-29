@@ -2,7 +2,8 @@
 layout : html
 ---
 <p style="padding:3rem 0">
-I am about to graduate from Ashoka University with a Bachelor of Science in Computer Science. I have written stuff in logic, number theory, and the philosophy of probability, some of which can be found as posts on this blog. Last academic year, I was a Teaching Assistant for Ashoka's CS1201: Data Structures course under Professor <a href="https://debayangupta.com">Debayan Gupta</a>. Currently, I am seeking employment opportunities where I can apply my skills and experience.
+
+I'm in the final year of my <abbr  title="Computer Science">CS</abbr> major at Ashoka University. I was a Teaching Assistant for Ashoka's Data Structures course last academic year. I often delve into analytic philosophy and number theory; my work on the same is available as posts on this blog. I am a competent web developer, and good at functional programming. I'm currently interested in open source, AI Safety, and improving wellbeing in a more general sense.
 </p>
 <h1> Posts </h1>
 
