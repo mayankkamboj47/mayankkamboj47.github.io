@@ -1,4 +1,5 @@
 const katex = require('katex');
+
 module.exports = function(eleventyConfig){
     eleventyConfig.addFilter('humanise', function(dateString){
         const date = new Date(dateString);
