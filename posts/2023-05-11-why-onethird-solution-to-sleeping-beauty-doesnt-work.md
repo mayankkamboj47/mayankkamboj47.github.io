@@ -1,15 +1,17 @@
 ---
 layout : post
-title : A critique on common P(H)=1/3 arguments for Sleeping Beauty
+title : 
 ---
+Note : This paper argues reveals two arguments against the P(H)=1/3 solution by Elga. I have highlighted them in yellow, if you
+should want to skip to them without reading the entire outline. 
 
 
 > ### Abstract
-> This paper shows flaws in two popular arguments for the P(H)=1/3 solution to the Sleeping Beauty problem. The first argument, from Elga (2001), relies on incompatible assumptions. The second frequentist argument says Beauty will guess correctly more with P(H)=1/3. I show that this relies on a poor understanding of the notion of trials, and provide an examination of trial outcomes that refutes the point. I propose a solution where heads and tails are equally likely on Monday yet P(H) stays 1/2.
+> This paper shows flaws in two popular arguments for the P(H)=1/3 solution to the Sleeping Beauty problem. The first argument, from Elga (2001), relies on incompatible assumptions. The second, an argument that says Beauty will guess correctly more with P(H)=1/3, relies on a poor understanding of the notion of trials.
 
-Beauty will sleep for two days - Monday and Tuesday. Her mother agrees, but only if they play a game. The mother flips a coin. If heads, she wakes Beauty on Monday only. If tails, she wakes Beauty on both days. Beauty forgets her awakenings. What probability should Beauty assign to heads when awakened?
+Beauty will sleep continuously for two days - Monday and Tuesday. Her mother agrees, but only if they play a game. The mother will flip a coin. On heads, she wakes Beauty on Monday. On tails, she wakes Beauty on both Monday and Tuesday. Beauty forgets her awakenings. What probability should Beauty assign to heads when awakened?
 
-At first Beauty might think: "Waking up gives me no new info. The coin is fair, so $P(H) = 1/2$." But Elga (2001) argues another solution is reasonable with $P(H) = 1/3$. His argument goes:
+At first Beauty might think: "Heads or tails, I would've woken up - it tells me nothing. The coin is fair, besides, so $P(H) = 1/2$." But Elga (2001) argues $P(H) = 1/3$. His argument goes:
 
 
 $1. P(H) + P(T) = 1$
@@ -18,49 +20,49 @@ __Justification__ : Heads and Tails are complements
 
 $2. P(Mon|T) = P(Tue|T) = \frac{1}{2}$
 
-__Justification__ : Equal chance of Monday or Tuesday if tails.
+__Justification__ : Equal chance of awakening being on Monday or Tuesday if tails.
 
 $3. P(H|Mon) = P(T|Mon)$
 
-__Justification__ : Beauty will wake up on Monday no matter the coin outcome. So say it is tossed on Monday then and Beauty knows this.
+__Justification__ : Beauty will wake up on Monday no matter the coin outcome. So say it is tossed after Monday awakening then and Beauty knows this.
 
 Together these give $P(H) = 1/3$.
 
-It's insightful to see where Elga goes wrong. With the premises stated clearly this way, the flaw must be in one of them.
-
 ## Problems with Elga's Third Premise
 
-The core problem is the third premise. First, whether the coin is tossed Sunday or Monday only doesn't matter _if Beauty doesn't know_. If she does, Monday gives her new info. Elga ignores this. He just says :
+The third premise here combines two contradictory intuitions:
 
-> [Beauty's] credence upon awakening in the coin's landing Heads ought to be the same regardless of whether [the Mother] use[s] method (1) or (2). So without loss of generality, suppose [she] use[s] - and [Beauty] knows that she uses - method 2. 
+1. On Monday, the coin isn't tossed yet, so heads and tails are equally likely. 
+1. If today is Monday, it rules out that today is Tuesday, and with it, some probability of tails.
 
-Method 1 and 2 here refer to whether the coin is tossed on a Sunday or on Monday. Elga doesn't argue for why Beauty's knowledge of the method doesn't change the problem, and this has been missed by the critiques that have followed. 
+Elga uses the second intuition to get $P(T|Mon) = P(T)/2$. But he combines it with the first intuition that the toss happens on Monday. Therefore, on Monday, the coin isn't tossed yet, and yet Beauty knows that probability of Tails has fallen - as if she has a crystal ball !
 
-More importantly, the third premise combines two contradictory intuitions:
+An example shows how strange the combination of these two intuitions is. On heads, I give you a sour candy. On tails, either a sour or a sweet candy with 50-50 chance. If the candy turns out to be sour, will you assign equal likelihood to heads and tails or more to one of them ? Here, the sweet candy and sour candy correspond to Monday and Tuesday. Imagine 100 candies of different flavours randomly picked from on Tails, sour being but one of them. What about now ? If a sour candy increases chances of heads, shouldn't
+the fact that today is Monday and not Tuesday, also increase the chance of heads ? 
 
-1. The toss happens on Monday, so heads and tails are equally likely.
-1. Monday rules out Tuesday, and with it, some probability of tails. 
+It would, but the third premise forces it not to, and relies on a fairly reasonable-sounding intution. The third premise only avoids
+contradiction by giving relative likelihood. We have two ways of showing the falsity of the solution. The first way, with a weaker conclusion, shows that it is like biasing the coin. The second way, in just a few sentences, shows that if someone believes in logical tautologies, they would find Elga's premises contradictory. 
 
-An example shows the conflict. Say heads means I play guitar. Tails means I randomly choose guitar or another instrument. If I play guitar, do you assign equal likelihood to heads and tails? No - tails is now less likely since guitar playing fits better with heads.
+### <mark>Elga's Premises ≡ Biasing the coin</mark>
 
-Elga uses the second intuition to get $P(T|Mon) = P(T)/2$. But he combines it with the first intuition that the toss happens on Monday. This gives Beauty a crystal ball to predict future coin flips!
-
-The crystal ball avoids contradiction only by giving relative likelihood. I show this is like biasing the coin. Take a biased coin with $P(H) = 1/3$. Heads means I play guitar. Tails means I randomly choose guitar or flute. Then:
+We do this by cases. First, that Biasing the coin -> Elga's premises. Then the other way around. 
+Take a biased coin with $P(H) = 1/3$. Heads means I give you sour candy. Tails means I randomly choose sour or sweet candy. Then:
 
 $P(H) + P(T) = 1$
 
-$P(G|H) = 1$
+$P(S|H) = 1$
 
-$P(G|T) = P(F|T) = 1/2$
+$P(S|T) = P(Sw|T) = 1/2$
 
 From these, we can derive 
-$P(H|G) = P(T|G) = \frac{1}{2}$
+$P(H|S) = P(T|S) = \frac{1}{2}$
 
-Replace G with Mon and F with Tue, since they're just arbitrary names. This matches Elga's assumptions. Same can be don in the other direction. The two problems are equivalent. 
+Replace S with Mon and Sw with Tue, since they're just arbitrary names. This matches Elga's assumptions. Same can be done in the other direction. That is, instead of using a biased coin case to derive Elga's assumptions, we could start with Elga's assumptions,
+replace the symbols 'Mon' and 'Tue' with 'S' and 'Sw', and derive our biased coin sour and sweet candy premises, listed above. This proves the equivalence. 
 
-The contradiction arises because "Monday" means two different things in Elga's premises. First it's an event certain to happen. Then it's an uncertain event - "today is Monday".
+### A logical Beauty
 
-Beauty knows that coin is tossed or not when she wakes on a Monday. If tossed already, Monday lowers the odds of Tuesday and thus of tails. But then she can't assume the toss is still 50/50 on Monday - that relies on the fair coin being tossed today. Alternatively, if the toss hasn't happened yet, it must happen today. Today must be Monday then, and $P(Mon)=1$, not Elga's $P(Mon)=2/3$. Either way, we find contradiction with Elga's three assumptions. 
+<mark>At any point, Beauty believes in logical tautologies - for example that the coin is either tossed or not tossed. She thus believes that the coin is either tossed or not tossed when wakes on a Monday. If tossed already, Elga's third premise stands intuitionless, and Beauty has no reason to believe in it. Alternatively, if the toss hasn't happened yet, it must happen today. Today must certainly be Monday then, and $P(Mon)=1$, not Elga's $P(Mon)=2/3$. Either way, we find contradiction with Elga's three assumptions. </mark>
 
 
 ## Problem with the frequentist argument
