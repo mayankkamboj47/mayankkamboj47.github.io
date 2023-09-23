@@ -1,17 +1,16 @@
 ---
 layout : post
-title : 
+title : Why the P(H)=1/3 solution to sleeping beauty doesn't work
 ---
-Note : This paper argues reveals two arguments against the P(H)=1/3 solution by Elga. I have highlighted them in yellow, if you
-should want to skip to them without reading the entire outline. 
+Note :  This is a paper outline. I have highlighted the paragraph with the central claim in yellow.
 
 
 > ### Abstract
-> This paper shows flaws in two popular arguments for the P(H)=1/3 solution to the Sleeping Beauty problem. The first argument, from Elga (2001), relies on incompatible assumptions. The second, an argument that says Beauty will guess correctly more with P(H)=1/3, relies on a poor understanding of the notion of trials.
+> This paper argues that two popular arguments for the P(H)=1/3 solution to Sleeping Beauty are flawed. The first argument, from Elga (2001), relies on incompatible assumptions. The second, an argument that says Beauty will guess correctly more with P(H)=1/3, relies on a poor understanding of the notion of trials. Finally, a solution that avoids these issues is proposed.
 
-Beauty will sleep continuously for two days - Monday and Tuesday. Her mother agrees, but only if they play a game. The mother will flip a coin. On heads, she wakes Beauty on Monday. On tails, she wakes Beauty on both Monday and Tuesday. Beauty forgets her awakenings. What probability should Beauty assign to heads when awakened?
+Beauty will sleep continuously for two days - Monday and Tuesday. Her mother agrees, but only if they play a game. The mother will flip a coin. If the coin shows heads, mother will wake Beauty on Monday. If tails, she wakes Beauty on both Monday and Tuesday. Beauty forgets her previous awakenings. What probability should Beauty assign to heads when awakened?
 
-At first Beauty might think: "Heads or tails, I would've woken up - it tells me nothing. The coin is fair, besides, so $P(H) = 1/2$." But Elga (2001) argues $P(H) = 1/3$. His argument goes:
+At first Beauty might think: "Heads or tails, I would've woken up - it tells me nothing. The coin is fair, besides, so $P(H) = 1/2$." But Elga (2001) argues for $P(H) = 1/3$. His argument is the following:
 
 
 $1. P(H) + P(T) = 1$
@@ -37,8 +36,8 @@ The third premise here combines two contradictory intuitions:
 
 Elga uses the second intuition to get $P(T|Mon) = P(T)/2$. But he combines it with the first intuition that the toss happens on Monday. Therefore, on Monday, the coin isn't tossed yet, and yet Beauty knows that probability of Tails has fallen - as if she has a crystal ball !
 
-An example shows how strange the combination of these two intuitions is. On heads, I give you a sour candy. On tails, either a sour or a sweet candy with 50-50 chance. If the candy turns out to be sour, will you assign equal likelihood to heads and tails or more to one of them ? Here, the sweet candy and sour candy correspond to Monday and Tuesday. Imagine 100 candies of different flavours randomly picked from on Tails, sour being but one of them. What about now ? If a sour candy increases chances of heads, shouldn't
-the fact that today is Monday and not Tuesday, also increase the chance of heads ? 
+An example shows how strange the combination of these two intuitions is. Say you're being blindfolded and fed a candy based on a coin toss. On heads, you get a sour candy. On tails, you get either a sour or sweet candy with 50-50 chance. If the candy turns out to be sour, will you assign equal likelihood to heads and tails ? Here, the sweet candy and sour candy correspond to Monday and Tuesday. If a sour candy increases chances of heads, shouldn't
+the fact that today is Monday and not Tuesday, also increase the chance of heads ?
 
 It would, but the third premise forces it not to, and relies on a fairly reasonable-sounding intution. The third premise only avoids
 contradiction by giving relative likelihood. We have two ways of showing the falsity of the solution. The first way, with a weaker conclusion, shows that it is like biasing the coin. The second way, in just a few sentences, shows that if someone believes in logical tautologies, they would find Elga's premises contradictory. 
