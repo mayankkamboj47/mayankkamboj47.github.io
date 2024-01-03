@@ -1,6 +1,7 @@
 const katex = require('katex');
 
 module.exports = function(eleventyConfig){
+    eleventyConfig.addPassthroughCopy('img');
     eleventyConfig.addFilter('humanise', function(dateString){
         const date = new Date(dateString);
         const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',

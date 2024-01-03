@@ -1,0 +1,125 @@
+<!doctype html>
+
+<html lang=en>
+<meta charset='utf-8' />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Using Eleventy with Github Pages</title>
+<style>
+    nav, nav ul{
+        list-style : none;
+        display : flex;
+        margin : 0;
+        padding : 0;
+    }
+    nav a {
+        display : block;
+        margin : 0.5rem 1rem;
+    }
+    nav a#logo{
+        margin-left : 0;
+    }
+    nav{
+        justify-content : space-between;
+        margin-bottom : 1.5rem;
+    }
+    body{
+        max-width : 1000px;
+        margin : 0 auto;
+        padding : 0 1rem;
+    }
+    footer { 
+        border-top : 1px solid gray;
+        padding : 1rem 0;
+        text-align : right;
+    }
+    .post-title{
+        margin-top : 0;
+    }
+</style>
+<link rel="stylesheet" href="https://unpkg.com/katex@0.16.8/dist/katex.min.css" >
+<body>
+
+<nav>
+    <a href="/" id="logo">Mayank Kamboj</a>
+    <ul>
+        <li><a href="/writing">Writing</a></li>
+        <li><a href="/code">Code</a></li>
+        <li><a href="https://docs.google.com/document/d/14tmTMbkGnUWsaqih7dzr5q0qoyx9bkgOUr3UV5HWOVA/edit">Resume</a></li>
+    </ul>
+</nav>
+<link rel="stylesheet" href="https://unpkg.com/katex@0.16.8/dist/katex.min.css" >
+
+<article class='post'>
+  <h1>Using Eleventy with Github Pages</h1>
+  <p>As I recently tried to move my github pages website from Jekyll to Eleventy, I found that the github pages setup for eleventy took me a few hours to figure out. This wasn't the case with Jekyll, the tool I was using for this blog earlier. Eleventy allows a simpler setup and is better for someone familiar with javascript and its tools, and even the initial difficulty in setting things up isn't enough to convince me otherwise. Yet, why have even that difficulty, when you can share what worked for you and save other people's time. That's what this article intends to do.</p>
+<h1>Create your eleventy website like usual</h1>
+<p>I'll assume you have your files ready, and just need to deploy them. If not, build your beautiful (or ugly) website before proceeding. You can take help from tutorials like <a href="https://www.11ty.dev/docs/getting-started/">https://www.11ty.dev/docs/getting-started/</a>.</p>
+<h1>Add a .nojekyll file in the root folder</h1>
+<p>Add an empty <code>.nojekyll</code> file next to where <code>package.json</code> and company are. This file tells github pages that we're not using jekyll, because it assumes that by default.</p>
+<h1>Create a config file .github/workflows/eleventy_build.yml</h1>
+<p>If the <code>.github</code> folder doesn't exist create that too. Same with <code>workflows</code>.</p>
+<p>After making the file, add this content to the file :</p>
+<pre><code>name: Eleventy Build
+
+
+on:
+  push:
+    branches:
+      - main
+      
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v2
+
+
+        - name: Setup Node
+          uses: actions/setup-node@v1
+          with:
+            node-version: '12.x'
+
+
+        - run: npm ci
+
+
+        - run: npm run build
+
+
+        - name: Deploy
+          uses: peaceiris/actions-gh-pages@v3
+          with:
+            deploy_key: $
+
+            publish_dir: ./_site
+
+</code></pre>
+<h1>Modify the config file</h1>
+<ol>
+<li>If you changed your default eleventy output folder, modify <code>publish_dir : ./_site</code> to <code>publish_dir : &lt;your output folder&gt;</code> in the config file. If not, skip this step.</li>
+<li>Make sure you have a <code>&quot;build&quot; : &quot;npx @11ty/eleventy&quot;</code> script set in package.json. If not, then go to <code>&quot;scripts&quot;</code> object in <code>package.json</code> and add the said property there.</li>
+<li>Update <code>branches : main</code> to <code>branches : &lt;your default branch&gt;</code>. You may be using master instead of main for example. You'll have to specify that here. If your default branch is main, you can skip this too.</li>
+</ol>
+<h1>Setup keys</h1>
+<p>Open a local terminal (I'm assuming you're on linux) and issue <code>ssh-keygen -t rsa -b 4096 -C &quot;$(git config user.email)&quot; -f gh-pages -N &quot;&quot;</code>. Two files will be created, <code>gh-pages</code> (the private key) and <code>gh-pages.pub</code> (the public key).</p>
+<p>Go to your github repo in your browser. Now go to <code>Settings &gt; Deploy Keys</code>. Click Add.
+Copy the contents of <code>gh-pages.pub</code> file you created in your terminal and add them to the box. Set the title to whatever you please. Allow write access and add the key.</p>
+<p>In the same way, you'll add the other, private key. Go to Settings &gt; Secrets. Add a new repository secret. Here, you'll copy paste the contents of <code>gh-pages</code> file you created in the local terminal. Set the title to <code>ACTIONS_DEPLOY_KEY</code> ( your config file is told to find a key with this name, so don't name this to anything else ).</p>
+<h1>Push !</h1>
+<p>Now just <code>git add</code> the files, <code>git commit</code> and push them. Github will build the website for you. It takes a while. You can check the progress on the homepage of your repository. It shows as a yellow circle with a small hash-like value next to it.
+If the build fails, check <code>Settings &gt; Pages</code>, and play around there.</p>
+<p>If this doesn't work for you, see 'Resources'. You may find something useful.</p>
+<h1>Resources</h1>
+<p>(Remember that these may say different things about the same issue. You might have to tailor the fix to your needs or maybe one of these will work for you as-it-is).</p>
+<p><a href="https://quinndombrowski.com/blog/2022/05/07/hosting-eleventy-on-github-pages">https://quinndombrowski.com/blog/2022/05/07/hosting-eleventy-on-github-pages/</a></p>
+<p><a href="https://github.com/11ty/eleventy/discussions/1455">https://github.com/11ty/eleventy/discussions/1455</a></p>
+<p><a href="https://www.linkedin.com/pulse/eleventy-github-pages-lea-tortay/">https://www.linkedin.com/pulse/eleventy-github-pages-lea-tortay/</a></p>
+<p><a href="https://donnacodes.com/publishing_eleventy_site_to_github_pages">https://donnacodes.com/publishing_eleventy_site_to_github_pages</a></p>
+<p><a href="https://tomhiskey.co.uk/blog/deploying-eleventy-to-github-pages-one-way/">https://tomhiskey.co.uk/blog/deploying-eleventy-to-github-pages-one-way/</a></p>
+
+</article> 
+
+<footer>
+<a href="https://www.github.com/mayankkamboj47">Github</a>
+mayankkamboj47 (at) gmail (dot) com
+</footer>

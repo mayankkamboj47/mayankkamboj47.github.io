@@ -1,0 +1,70 @@
+<!doctype html>
+
+<html lang=en>
+<meta charset='utf-8' />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turing Machines With Continuous Tapes</title>
+<style>
+    nav, nav ul{
+        list-style : none;
+        display : flex;
+        margin : 0;
+        padding : 0;
+    }
+    nav a {
+        display : block;
+        margin : 0.5rem 1rem;
+    }
+    nav a#logo{
+        margin-left : 0;
+    }
+    nav{
+        justify-content : space-between;
+        margin-bottom : 1.5rem;
+    }
+    body{
+        max-width : 1000px;
+        margin : 0 auto;
+        padding : 0 1rem;
+    }
+    footer { 
+        border-top : 1px solid gray;
+        padding : 1rem 0;
+        text-align : right;
+    }
+    .post-title{
+        margin-top : 0;
+    }
+</style>
+<link rel="stylesheet" href="https://unpkg.com/katex@0.16.8/dist/katex.min.css" >
+<body>
+
+<nav>
+    <a href="/" id="logo">Mayank Kamboj</a>
+    <ul>
+        <li><a href="/writing">Writing</a></li>
+        <li><a href="/code">Code</a></li>
+        <li><a href="https://docs.google.com/document/d/14tmTMbkGnUWsaqih7dzr5q0qoyx9bkgOUr3UV5HWOVA/edit">Resume</a></li>
+    </ul>
+</nav>
+<link rel="stylesheet" href="https://unpkg.com/katex@0.16.8/dist/katex.min.css" >
+
+<article class='post'>
+  <h1>Turing Machines With Continuous Tapes</h1>
+  <p>I wonder why Turing chose to use infinite tapes for his Turing machines. He could have chosen lesser, or more amounts of storage. If he chose lesser amounts, he could go with finite tapes. If he chose more amounts, he could prefer some other storage over a tape. Below, I explore both of these possibilities.</p>
+<p>First, here is a bijection proof for why the number of bits on a infinite-tape turing machine is countable. This will be necessary to move forward. Take the turing machine tape, and mark an arbitrary bit as a 0. Now, mark the rest of the bits in a way, such that if bit b is marked i, the bit to its right is marked i+1, and the bit to its left is marked i-1. This finishes the bijection of bits to the set of integers. Since integers are countable, so are the bits on the tape.</p>
+<p>What if Turing had gone for a tape of finite length ? One possibility is that he would have to pick some whole number <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>l</mi></mrow><annotation encoding="application/x-tex">l</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span></span></span></span> for the length of the tape. But any such choice of l would seem arbitrary - why not pick lesser or more. Another possiblity is unboundedly finite tapes. That is, for any <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>l</mi><mo>∈</mo><mi>N</mi></mrow><annotation encoding="application/x-tex">l \in N</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7335em;vertical-align:-0.0391em;"></span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∈</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.10903em;">N</span></span></span></span>, there is a finite tape machine of tape length <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>l</mi></mrow><annotation encoding="application/x-tex">l</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span></span></span></span>. This way, we don't choose some arbitrary <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>l</mi></mrow><annotation encoding="application/x-tex">l</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span></span></span></span>, but just say that the machines will work for any finite length. Because <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">∞</mi></mrow><annotation encoding="application/x-tex">\infty</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord">∞</span></span></span></span> is not a natural number, <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>l</mi></mrow><annotation encoding="application/x-tex">l</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span></span></span></span> can't be <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">∞</mi></mrow><annotation encoding="application/x-tex">\infty</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord">∞</span></span></span></span>. These finite tapes resemble physical computers better, which can grow to have arbitrarily large amounts of finite storage, but never infinite. At this point, we may want to prove that there are problems solvable on infinite tape turing machines, which are not solvable on finite tape machines. Here is one. Given two irrationals, and any whole number p, add the irrationals to p decimal points. On finite tape machines, no matter what tape length <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>l</mi></mrow><annotation encoding="application/x-tex">l</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span></span></span></span> you pick, there is always some <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>&gt;</mo><mi>l</mi></mrow><annotation encoding="application/x-tex">p &gt; l</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7335em;vertical-align:-0.1944em;"></span><span class="mord mathnormal">p</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">&gt;</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span></span></span></span> for which the computation runs out of memory. This makes infinite tape Turing machines a strictly stronger model of computation than finite tape machines. Infinite tape turing machines can, thus, do things that our physical computers can't. But is that a good thing ? If you want Turing machines to model reality as well as possible, no. If you want Turing machines to just be able to solve all sorts of computation problems out there, yes. To my knowledge, we haven't found a model of computation stronger than Turing machines. Also to my knowledge, this means that the problems any model of computation can solve are a subset of the problems that infinite tape Turing machines can solve.</p>
+<p>Using an infinite tape gives us countably infinite bits to work. What if we could have uncountably infinite bits to work instead ? For that, we will have to throw away the tape. The reason is, that the tape has the blocks in a sequence. And for any such infinite sequence, it is possible to draw a bijection to the set of integers, which is countably infinite. To move beyond countable infinity to say, the infinity of real numbers, we will have to use a different structure. For example, one could use a rod, with each point on the rod representing a bit. If you have marked the point on the rod black, the bit is a 1, otherwise it is a 0. The instructions for the head will also need to change. It can no longer be a &quot;move left&quot; or &quot;move right&quot;, because there is no next or previous number in the set of reals. Instead, we may require something like a goto instruction. Another alternative could be to augment &quot;move left&quot; and &quot;move right&quot; with a real number which specifies the distance to move. Such machines are at least as strong as infinite tape Turing machines, because they can emulate infinite tape Turing machines by restricting themselves to integer points. Are they stronger however ?</p>
+<p>If they're not, we need a proof showing that any problem solvable by such a machine should be solvable by infinite tape Turing machines. If they are, we need an example problem which infinite tape machines can't compute, but the rod-and-head machines can.</p>
+<h1>Update : 17-06-23</h1>
+<p>It occurred to me almost immediately after writing this post, that it would be hard for the head to access all the numbers on the rod. First, given a real, it would take forever to even read the value of the real so a <code>goto &lt;real&gt;</code> command would be practically infeasible. But when has practicality bothered in this theoretical realm. It didn't bother Turing when he chose infinite tapes for his machines.</p>
+<p>Even if we had such a command, how would we obtain the said reals ? For example, it is well known that there are reals we can never write out on a piece of paper. Only a very small subset of real numbers can be described by starting with a certain real, and repeatedly applying the operations of mathematics for which we have a name to it. This is a simple consequence of the fact that we have a name only for a finite number of operations of math, and thus we have a finite vocabulary through which we are trying to build sentences to access the reals. But the sentences we can generate using this vocabulary are countable, while the reals are uncountable. Therefore, if we mapped each sentence to a real, there would be reals left out unreferred to by any sentence - we would need an infinite vocabulary to do so. And not just any infinite vocabulary - an infinite vocabulary with the right kinds of meanings assigned to the words. As a trivial example, one could have an infinite vocabulary by having a different symbol for each of the digits, but that doesn't give us expressive power to refer to all the reals.</p>
+<p>Anyway, if we tried building these head and rod machines, it would be a fun way to study unreachable numbers - and thus the machines would have just a finite amount of numbers accessible to them. One interesting thing about the numbers, however, would be that there would be a number between any 2 numbers on the head and rod machines that the head could access.</p>
+<p>Also, while I do not have a direct proof at the moment, I am sure that infinite-tape Turing Machines have the ability to emulate the head and rod machines therefore, because there is only a countable number of accessible values on the rod, and each of these could be mapped to a position on the tape.</p>
+
+</article> 
+
+<footer>
+<a href="https://www.github.com/mayankkamboj47">Github</a>
+mayankkamboj47 (at) gmail (dot) com
+</footer>
