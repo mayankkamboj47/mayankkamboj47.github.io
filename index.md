@@ -1,8 +1,9 @@
 ---
 layout : html
 ---
-<p style="padding:3rem 0">
-I finished my undergraduate degree in Computer Science from Ashoka University. I also took courses in Analytic Philosophy my third semester onwards; the writings on this blog are of a mixed nature between computer science and philosophy. I was a Teaching Assistant for Ashoka's Data Structures course in Monsoon 2022. I am good at web development, functional programming, and have recently taught myself Machine Learning from J.Howard's fast.ai course. I'm interested in improving human wellbeing through my work, and therefore, in AI Safety, and open source. I'm open to volunteer work, and am looking for employment at the moment. If you're interested, please reach out at mayankkamboj47@gmail.com
+<p style="padding:3rem 0 0 0">
+I recently finished my undergraduate degree in Computer Science from <a href="https://www.ashoka.edu.in">Ashoka University</a> , where I also studied a bit of Analytic Philosophy. The writings on this blog are somewhere between CS and philosophy.</p>
+<p>I was Teaching Assistant for Ashoka's Data Structures course in Monsoon 2022. Additionally, I have experience in web development, functional programming, and a deep interest in the theoretical aspects of Computer Science, which extends far into mathematics and Analytic Philosophy. I believe that work is just paid charity and have been interested in AI Safety, having also finished J.Howard's fastAI course and AGI fundamentals recently. I'm open to volunteer work and employment - reach out at mayankkamboj47@gmail.com
 </p>
 <h1> Posts </h1>
 
