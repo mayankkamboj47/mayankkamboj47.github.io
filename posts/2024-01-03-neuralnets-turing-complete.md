@@ -1,6 +1,6 @@
 ---
 layout : post
-title  : Another proof of neural nets' Turing Completeness
+title  : Neural Nets are Turing Complete
 ---
 
 In a [previous post](/posts/2023-05-12-a-substitution-model-of-computation),I introduced a Turing complete model of computation utilising string substitution. Here, we'll prove that neural nets are Turing Complete by implementing the said model (which I'll call the substitution model henceforth) using a neural net.
