@@ -11,8 +11,5 @@ Built using Typescript, React, and Tailwind. Tested with jest and testing librar
 ### minigit [[code](https://www.github.com/mayankkamboj47/minigit)]
 A miniature version control system. Built using Typescript and Node.js. Thoroughly unit tested.
 
-### [game-of-life](https://mayankkamboj47.github.io/game-of-life) [[code](https://www.github.com/mayankkamboj47/game-of-life)]
-John Conway's game of life
-
 ### [minimax-playground](https://mayankkamboj47.github.io/minmax) [[code](https://www.github.com/mayankkamboj47/minmax)]
 A generic minimax algorithm, with a demonstration on two games
