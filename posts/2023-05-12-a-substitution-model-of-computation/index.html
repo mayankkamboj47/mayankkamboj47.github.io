@@ -51,85 +51,99 @@
 
 <article class='post'>
   <h1>A substitution model of computation</h1>
-  <p>A Substitution Model of Computation</p>
-<p>String substitution is sufficient to create a model of computation as powerful as Turing machines. The model uses fewer basic operations, and programs written in it are often more compact and easier to follow.</p>
-<p>The Model</p>
+  <p>String substitution is sufficient to create a model of computation as powerful as Turing machines. The model uses fewer basic operations, and programs written in it are often more compact and easier to follow.</p>
+<h3>The Model</h3>
 <p>We start with a set S that contains infinitely many symbols. These symbols will be used to create the input and output strings, as well as the intermediate strings that result from the transformations we apply to the input. The reason for having an infinite set of symbols will become clear in the section on Turing completeness. Within this infinite symbol set, we also have the symbols 1 and 0.</p>
 <p>The input is a string of 1s separated by 0s. Each sequence of 1s represents a number equal to the count of 1s in that sequence. For instance, if we have the input 5, 4, it would be represented as &quot;1111101111&quot;. The output is a continuous string of 1s, which represents the number equal to the count of 1s in the string. For example, a program that doubles the given number would produce &quot;1111&quot; for the input &quot;11&quot;. Similarly, a program that multiplies two numbers together would generate &quot;111111&quot; for the input &quot;110111&quot; (which represents 2,3).</p>
 <p>To manipulate the input string, we have an operation called &quot;chg&quot; (read as: change), which allows us to substitute a specific substring with another substring. For instance, applying the one-line program</p>
-<p>chg 1 ◆</p>
+<pre><code>chg 1 ◆
+</code></pre>
 <p>to the input &quot;111&quot; would result in the output &quot;◆◆◆&quot;.</p>
 <p>Here is a brief program that doubles any given input:</p>
-<p>chg 1 ◆
-chg ◆ 11</p>
+<pre><code>chg 1 ◆
+chg ◆ 11
+</code></pre>
 <p>One could also write this as shorthand:</p>
-<p>chg 1 11</p>
+<pre><code>chg 1 11
+</code></pre>
 <p>where we assume that all instances of &quot;1&quot; are replaced with &quot;11&quot; at the same time.</p>
 <p>Finally, the special symbols &quot;<span class="katex-error" title="ParseError: KaTeX parse error: Expected &#x27;EOF&#x27;, got &#x27;&amp;&#x27; at position 1: &amp;̲quot; and &amp;quot…" style="color:#cc0000">&amp;quot; and &amp;quot;^&amp;quot; allow us to refer to the start and the end of a string. For example, &amp;quot;chg 1</span> 0&quot; only replaces the &quot;1&quot; at the end of the string with a &quot;0&quot;. If the string doesn't end in &quot;1&quot;, it matches nothing. Similarly, the line &quot;chg ^hi hello&quot; only matches the starting &quot;hi&quot; in a string. If the input string was &quot;hi hiroshi&quot;, it would match just the starting &quot;hi&quot;, and not the &quot;hi&quot; in &quot;hiroshi&quot;. If the string doesn't start with &quot;hi&quot;, it matches nothing.</p>
 <p>Turing Completeness</p>
 <p>Can this model of computation perform every possible calculation? That is hard to answer because every possible calculation is hard to define formally. It is easier to show that our model can solve everything that other models can. Since models come in different levels of capability, known as the power of the model, we will simulate the most powerful model known: Turing machines. These machines can do everything a modern computer can, and some things more, owing to their infinite memory. Simulating Turing machines in our model is straightforward.</p>
 <p>A Turing machine consists of a tape with blocks, each containing a 1 or a 0, similar to the input of our computation model. It produces output in a similar way to our model, too. However, only the start and end result are similar — the process of calculation is quite different in Turing machines. Turing machines have infinite memory to begin with, whereas our model never does at any finite point in time. In our model, we obtain additional memory by writing a command. For example, the command</p>
-<p>chg $ 000</p>
+<pre><code>chg $ 000
+</code></pre>
 <p>makes three zeroes appear at the end.</p>
 <p>Turing machines contain a head, which is always at a particular point on the tape and has the ability to do four operations: move right, move left, put a 1, put a 0. All instructions look like this:</p>
-<p>«In state X, if at &quot;&lt;1 or 0&gt;&quot;, perform one of the 4 operations, and go to state Y.»</p>
+<pre><code>«In state X, if at &quot;&lt;1 or 0&gt;&quot;, perform one of the 4 operations, and go to state Y.»
+</code></pre>
 <p>We will simulate these instructions in the substitution model. For this, first we need a representation of the head. We use a set of symbols to represent the head in different states. For each state, we will have two symbols — one for head at 1 and another for head at 0.</p>
 <p>At the start of the computation, we can introduce the head with the following short program:</p>
-<p>chg 1$ ◆
-chg 0$ ◼</p>
+<pre><code>chg 1$ ◆
+chg 0$ ◼
+</code></pre>
 <p>&quot;◆&quot; represents the head in state 0 and at bit 1, &quot;◼&quot; in state 0 at bit 0. To add more states, we simply add more symbols, two per state — one for 1 and another for 0.</p>
 <p>Turing machines generally perform the following operation at every step:</p>
-<p>«In state X, if at &quot;&lt;1 or 0&gt;&quot;, &quot;<operation>&quot;, and go to state Y.»</p>
+<pre><code>«In state X, if at &quot;&lt;1 or 0&gt;&quot;, &quot;&lt;operation&gt;&quot;, and go to state Y.»
+</code></pre>
 <p>Without loss of generality, say that &quot;◆&quot; and &quot;◼&quot; represent the head in state X, at 1 and 0 respectively. And say that &quot;●&quot; represents the head in state Y at a 1, and &quot;◩&quot; represents the head in state Y at a 0. Here is how to perform all the possible operations for a Turing machine:</p>
-<p>If at a 1:
-Going left:
-chg 1◆ ●1
-chg 0◆ ◩1
-Going right:
-chg ◆1 1●
-chg ◆0 1◩
-Writing a 0:
-chg ◆ ◩
-Writing a 1:
-chg ◆ ●</p>
+<pre><code>If at a 1:
+    Going left:
+        chg 1◆ ●1
+        chg 0◆ ◩1
+    Going right:
+        chg ◆1 1●
+        chg ◆0 1◩
+    Writing a 0:
+        chg ◆ ◩
+    Writing a 1:
+        chg ◆ ●
+</code></pre>
 <p>The case for 0 is identical, but &quot;◼&quot; will replace &quot;◆&quot;, and &quot;0&quot; will replace &quot;1&quot; in the string to be substituted with.</p>
 <p>With this, we finish the translation of the quadruples. However, there is still one piece left. In a Turing machine, for every state, we cycle through the quadruples to see if a quadruple matches the state we're currently in. If it does, we execute the quadruple code. Otherwise, we stop. We've only translated the quadruples so far. We still need a way to cycle through them, and stop once nothing matches.</p>
 <p>We could make this cycling implicit, as in the case of Turing machines. If we want to make it explicit, we introduce a repeat-till-no-change operator:</p>
-<p>repeat till no change:
-<translated quadruples here></p>
+<pre><code>repeat till no change:
+    &lt;translated quadruples here&gt;
+</code></pre>
 <p>We only need this repeat-till-no-change operator once in the entire program, to cycle through the translated quadruples. This finishes the proof of equivalence to Turing machines.</p>
 <p>Here is a translation of a simple piece of code that adds a 1 at the start of the input:</p>
-<p>chg 1$ ◆
+<pre><code>chg 1$ ◆
 repeat till no change :
-chg 1◆ ◆1
-chg ^◆ ◼1                                  a01La0
-chg ◼  ●                                   a001a1
-chg ● 1</p>
+    chg 1◆ ◆1
+    chg ^◆ ◼1                                  a01La0
+    chg ◼  ●                                   a001a1
+chg ● 1
+</code></pre>
 <p>&quot;chg 1$ ◆&quot; introduces the head. &quot;chg 1◆ ◆1&quot; and &quot;chg ^◆ ◼1&quot; together are the translation of the quadruple &quot;a01La0&quot;. Finally, &quot;chg ● 1&quot; ensures that only 1 and 0 remain in the final output.</p>
 <p>With this example, we close the section on Turing completeness. Direct translation is often not optimal. For example, for the above problem of prepending 1, the optimal solution is the one-liner</p>
-<p>chg ^ 1</p>
+<pre><code>chg ^ 1
+</code></pre>
 <p>where we exploit the fact that &quot;^&quot; alone matches the start of the string, but no characters, making &quot;chg ^ x&quot; equivalent to saying &quot;prepend x&quot;.</p>
 <p>Writing Programs</p>
 <p>The following examples illustrate how common computations can be expressed in the substitution model.</p>
 <p>Addition of a constant, say 5, is simply</p>
-<p>chg $ 11111</p>
+<pre><code>chg $ 11111
+</code></pre>
 <p>compared to the much larger collection of quadruples required in a Turing machine, where the number of quadruples grows with the size of the constant being added.</p>
 <p>Multiplication by constants is equally direct:</p>
-<p>chg 1 111</p>
+<pre><code>chg 1 111
+</code></pre>
 <p>which multiplies by 3. By mapping each &quot;1&quot; to &quot;111&quot;, we triple the total count of 1s.</p>
 <p>If simultaneous substitution is undesirable, the same computation can be written as</p>
-<p>chg 1 ●
-chg ● 111</p>
+<pre><code>chg 1 ●
+chg ● 111
+</code></pre>
 <p>We first map each &quot;1&quot; to a &quot;●&quot;, and then each &quot;●&quot; to &quot;111&quot;.</p>
 <p>What about exponentiation? Here's how to calculate 2^x. The intuition is to keep doubling a number which starts from 1, and decrementing the input, until only the former number remains.</p>
-<p>chg ^ ●                            # Introduce ●, which will multiply in number to 2^x
+<pre><code>chg ^ ●                            # Introduce ●, which will multiply in number to 2^x
 repeat till no change :
-chg ●1 ●                       # decrement the number
-repeat till no change :        # if none of the number is left, replace ● with 'S'
-chg ●$ S
-chg ●S SS
-chg ● ●●                       # double the ●
-chg S 1                            # ensure only 1 and 0 in the final output</p>
+    chg ●1 ●                       # decrement the number
+    repeat till no change :        # if none of the number is left, replace ● with 'S'
+        chg ●$ S
+        chg ●S SS
+    chg ● ●●                       # double the ●
+chg S 1                            # ensure only 1 and 0 in the final output
+</code></pre>
 <p>This example uses a nested repeat, but it closely follows the underlying idea.</p>
 <p>These examples illustrate that computations requiring many Turing-machine quadruples can often be expressed concisely in the substitution model.</p>
 <p>For a slightly more ambitious example, refer to [https://mayankkamboj47.github.io/posts/2024-01-03-neuralnets-turing-complete/], where we demonstrate the turing completeness of (recurrent) neural networks by reducing them to the substitution model.</p>
