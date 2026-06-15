@@ -68,7 +68,7 @@ chg ◆ 11
 </code></pre>
 <p>where we assume that all instances of &quot;1&quot; are replaced with &quot;11&quot; at the same time.</p>
 <p>Finally, the special symbols &quot;<span class="katex-error" title="ParseError: KaTeX parse error: Expected &#x27;EOF&#x27;, got &#x27;&amp;&#x27; at position 1: &amp;̲quot; and &amp;quot…" style="color:#cc0000">&amp;quot; and &amp;quot;^&amp;quot; allow us to refer to the start and the end of a string. For example, &amp;quot;chg 1</span> 0&quot; only replaces the &quot;1&quot; at the end of the string with a &quot;0&quot;. If the string doesn't end in &quot;1&quot;, it matches nothing. Similarly, the line &quot;chg ^hi hello&quot; only matches the starting &quot;hi&quot; in a string. If the input string was &quot;hi hiroshi&quot;, it would match just the starting &quot;hi&quot;, and not the &quot;hi&quot; in &quot;hiroshi&quot;. If the string doesn't start with &quot;hi&quot;, it matches nothing.</p>
-<p>Turing Completeness</p>
+<h3>Turing Completeness</h3>
 <p>Can this model of computation perform every possible calculation? That is hard to answer because every possible calculation is hard to define formally. It is easier to show that our model can solve everything that other models can. Since models come in different levels of capability, known as the power of the model, we will simulate the most powerful model known: Turing machines. These machines can do everything a modern computer can, and some things more, owing to their infinite memory. Simulating Turing machines in our model is straightforward.</p>
 <p>A Turing machine consists of a tape with blocks, each containing a 1 or a 0, similar to the input of our computation model. It produces output in a similar way to our model, too. However, only the start and end result are similar — the process of calculation is quite different in Turing machines. Turing machines have infinite memory to begin with, whereas our model never does at any finite point in time. In our model, we obtain additional memory by writing a command. For example, the command</p>
 <pre><code>chg $ 000
@@ -119,7 +119,7 @@ chg ● 1
 <pre><code>chg ^ 1
 </code></pre>
 <p>where we exploit the fact that &quot;^&quot; alone matches the start of the string, but no characters, making &quot;chg ^ x&quot; equivalent to saying &quot;prepend x&quot;.</p>
-<p>Writing Programs</p>
+<h3>Writing Programs</h3>
 <p>The following examples illustrate how common computations can be expressed in the substitution model.</p>
 <p>Addition of a constant, say 5, is simply</p>
 <pre><code>chg $ 11111
@@ -147,9 +147,6 @@ chg S 1                            # ensure only 1 and 0 in the final output
 <p>This example uses a nested repeat, but it closely follows the underlying idea.</p>
 <p>These examples illustrate that computations requiring many Turing-machine quadruples can often be expressed concisely in the substitution model.</p>
 <p>For a slightly more ambitious example, refer to [https://mayankkamboj47.github.io/posts/2024-01-03-neuralnets-turing-complete/], where we demonstrate the turing completeness of (recurrent) neural networks by reducing them to the substitution model.</p>
-<p>Conclusion</p>
-<p>The substitution model of computation, together with the repeat-till-no-change operator, allows programs to be expressed using only two primitives.</p>
-<p>In contrast to the usual approach of introducing additional primitives to obtain more concise programs, this model relies on repeated application of substitution rules. By showing that the model can simulate Turing machines, we establish that substitution, together with repeated rule application, is sufficient for universal computation.</p>
 
 </article> 
 
