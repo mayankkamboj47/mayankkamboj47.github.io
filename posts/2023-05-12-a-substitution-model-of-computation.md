@@ -34,9 +34,9 @@ chg 1 11
 
 where we assume that all instances of "1" are replaced with "11" at the same time.
 
-Finally, the special symbols "$" and "^" allow us to refer to the start and the end of a string. For example, "chg 1$ 0" only replaces the "1" at the end of the string with a "0". If the string doesn't end in "1", it matches nothing. Similarly, the line "chg ^hi hello" only matches the starting "hi" in a string. If the input string was "hi hiroshi", it would match just the starting "hi", and not the "hi" in "hiroshi". If the string doesn't start with "hi", it matches nothing.
+Finally, the special symbols "\$" and "\^" allow us to refer to the start and the end of a string. For example, "chg 1\$ 0" only replaces the "1" at the end of the string with a "0". If the string doesn't end in "1", it matches nothing. Similarly, the line "chg ^hi hello" only matches the starting "hi" in a string. If the input string was "hi hiroshi", it would match just the starting "hi", and not the "hi" in "hiroshi". If the string doesn't start with "hi", it matches nothing.
 
-Turing Completeness
+### Turing Completeness
 
 Can this model of computation perform every possible calculation? That is hard to answer because every possible calculation is hard to define formally. It is easier to show that our model can solve everything that other models can. Since models come in different levels of capability, known as the power of the model, we will simulate the most powerful model known: Turing machines. These machines can do everything a modern computer can, and some things more, owing to their infinite memory. Simulating Turing machines in our model is straightforward.
 
@@ -108,7 +108,7 @@ chg ^ 1
 ```
 where we exploit the fact that "^" alone matches the start of the string, but no characters, making "chg ^ x" equivalent to saying "prepend x".
 
-Writing Programs
+### Writing Programs
 
 The following examples illustrate how common computations can be expressed in the substitution model.
 
@@ -147,9 +147,3 @@ This example uses a nested repeat, but it closely follows the underlying idea.
 These examples illustrate that computations requiring many Turing-machine quadruples can often be expressed concisely in the substitution model.
 
 For a slightly more ambitious example, refer to [https://mayankkamboj47.github.io/posts/2024-01-03-neuralnets-turing-complete/], where we demonstrate the turing completeness of (recurrent) neural networks by reducing them to the substitution model.
-
-Conclusion
-
-The substitution model of computation, together with the repeat-till-no-change operator, allows programs to be expressed using only two primitives.
-
-In contrast to the usual approach of introducing additional primitives to obtain more concise programs, this model relies on repeated application of substitution rules. By showing that the model can simulate Turing machines, we establish that substitution, together with repeated rule application, is sufficient for universal computation.
