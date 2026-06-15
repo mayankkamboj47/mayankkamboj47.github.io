@@ -5,7 +5,7 @@ title : A mathematical flaw in the Dutch Book Argument for P(H)=1/3 in the Sleep
 
 Abstract
 
-The common frequentist argument for the thirder solution to the Sleeping Beauty problem claims that assigning P(H)=1/3 maximizes correct guesses over repeated trials. This relies on averaging correct awakenings across repeated trials of the experiment. If we measure Beauty's "success" in purely binary terms, the advantage disappears. Thus, the frequentist argument does not support P(H)=1/3.
+_The common frequentist argument for the thirder solution to the Sleeping Beauty problem claims that assigning P(H)=1/3 maximizes correct guesses over repeated trials. This relies on averaging correct awakenings across repeated trials of the experiment. If we measure Beauty's "success" in purely binary terms, the advantage disappears. Thus, the frequentist argument does not support P(H)=1/3._
 
 Beauty agrees to participate in the following experiment. On Sunday, she is put to sleep. A fair coin is then tossed. If the coin lands Heads, she is awakened on Monday only. If the coin lands Tails, she is awakened on both Monday and Tuesday. After each awakening, her memory of previous awakenings is erased. Whenever Beauty awakens, she knows the protocol of the experiment but does not know which day it is or how the coin landed.
 
