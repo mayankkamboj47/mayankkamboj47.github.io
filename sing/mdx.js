@@ -145,6 +145,7 @@
       } catch (e) { sess = null; onStatus('gpu-failed', 0, String(e && e.message || e)); }
     }
     if (!sess) sess = await ort.InferenceSession.create(bytes, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
+    onStatus('ready', 0, ep);
     return (sessions[key] = { sess, ep, m });
   }
 

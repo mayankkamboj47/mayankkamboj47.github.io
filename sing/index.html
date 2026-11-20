@@ -209,6 +209,7 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:18px}
       <label class="row"><span>I'm using earphones<small>Off = phone speaker, echo cancelling on</small></span><input type="checkbox" id="sEar"></label>
       <label class="row"><span>Count-in<small>One bar of clicks before melodies</small></span><input type="checkbox" id="sCount"></label>
       <div class="row"><span>Karaoke engine<small>AI is far cleaner; runs on this phone</small></span><select id="sKara"><option value="ai-hq3">AI: remove all voices</option><option value="ai-kara2">AI: lead vocal only</option><option value="dsp">Quick filter</option></select></div>
+      <label class="row"><span>Use the phone's GPU for AI<small>Faster, but crashes on some phones</small></span><input type="checkbox" id="sGpu"></label>
       <div class="row"><span>Warm-up repeats<small>Each repeat moves up a semitone</small></span><select id="sReps"><option>1</option><option>3</option><option>5</option><option>8</option></select></div>
       <div class="row"><span>Sync offset<small id="syncVal">0 ms</small></span><input type="range" id="sSync" min="-300" max="300" step="10"></div>
       <div class="row"><span>Mic sensitivity<small id="sensVal">Normal</small></span><input type="range" id="sSens" min="0" max="4" step="1"></div>
@@ -266,7 +267,7 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:18px}
 </div>
 
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="sep.js?v=0.4"></script>
-<script src="app.js?v=0.4"></script>
+<script src="sep.js?v=0.4.1"></script>
+<script src="app.js?v=0.4.1"></script>
 </body>
 </html>
