@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Sing-Along Studio · separation lab</title>
+<style>body{font:14px/1.5 system-ui,sans-serif;background:#0d0e1c;color:#eee;padding:16px}pre{white-space:pre-wrap;background:#16172d;padding:12px;border-radius:10px}button{font:inherit;padding:8px 14px;margin:4px;border-radius:8px;border:0;background:#b8a0ff}</style>
+</head>
+<body>
+<h3>Separation lab (test page)</h3>
+<p>Public-domain voice: “Breves dies hominis” sung by Magdalen Kadel (Wikimedia Commons, released to the public domain). The accompaniment is synthesised here.</p>
+<div><select id="model"><option value="hq3">Inst HQ 3</option><option value="kara2">Karaoke 2</option></select><button id="go">Run test</button><button id="pm">▶ mix</button><button id="pi">▶ AI instrumental</button><button id="pv">▶ AI vocals</button></div>
+<pre id="out">idle</pre>
+<script src="mdx.js?v=lab1"></script>
+<script>
+const log = s => { document.getElementById('out').textContent += '\n' + s; };
+const VOICE_URL = 'https://upload.wikimedia.org/wikipedia/commons/d/dd/Breves_dies_hominis.ogg';
+const SR = 44100, DUR = 30;
+let ac, bufs = {};
+function accompaniment(n) {
+  const L = new Float32Array(n), R = new Float32Array(n), bpm = 96, spb = 60 / bpm;
+  const chords = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]]; // Am F C G
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647 - 0.5;
+  for (let b = 0; b * spb < n / SR; b++) {
+    const ch = chords[Math.floor(b / 4) % 4], t0 = Math.round(b * spb * SR);
+    // piano-ish chord on each beat (left/right spread)
+    ch.forEach((m, j) => { const f = 440 * Math.pow(2, (m - 69) / 12), pan = j / 2; for (let i = 0; i < spb * SR && t0 + i < n; i++) { const t = i / SR, env = Math.exp(-t * 2.5); let v = 0; for (let h = 1; h <= 6; h++) v += Math.sin(2 * Math.PI * f * h * t) / (h * h); L[t0 + i] += 0.06 * v * env * (1 - pan * 0.6); R[t0 + i] += 0.06 * v * env * (0.4 + pan * 0.6); } });
+    // bass on beats 1 and 3
+    if (b % 2 === 0) { const f = 440 * Math.pow(2, (ch[0] - 24 - 69) / 12); for (let i = 0; i < 2 * spb * SR && t0 + i < n; i++) { const t = i / SR, v = 0.18 * Math.sin(2 * Math.PI * f * t) * Math.exp(-t * 1.2); L[t0 + i] += v; R[t0 + i] += v; } }
+    // kick / snare / hat
+    const kick = b % 2 === 0;
+    for (let i = 0; i < 0.12 * SR && t0 + i < n; i++) { const t = i / SR; const v = kick ? 0.35 * Math.sin(2 * Math.PI * (50 + 70 * Math.exp(-t * 30)) * t) * Math.exp(-t * 20) : 0.12 * rnd() * Math.exp(-t * 25); L[t0 + i] += v; R[t0 + i] += v; }
+    const h0 = t0 + Math.round(spb * SR / 2); for (let i = 0; i < 0.04 * SR && h0 + i < n; i++) { const v = 0.04 * rnd() * Math.exp(-i / SR * 70); L[h0 + i] += v * 0.7; R[h0 + i] += v; }
+  }
+  return [L, R];
+}
+const E = a => a.reduce((s, v) => s + v * v, 0);
+const sdr = (ref, est) => { let s = 0, e = 0; for (let c = 0; c < 2; c++) for (let i = 0; i < ref[c].length; i++) { s += ref[c][i] ** 2; e += (est[c][i] - ref[c][i]) ** 2; } return 10 * Math.log10(s / e); };
+async function run() {
+  document.getElementById('out').textContent = 'starting…';
+  try {
+    ac = ac || new AudioContext();
+    log('WebGPU adapter: ' + (await MDX.hasWebGPU()) + ' | crossOriginIsolated: ' + self.crossOriginIsolated + ' | cores: ' + navigator.hardwareConcurrency);
+    log('fetching public-domain voice…');
+    const ab = await (await fetch(VOICE_URL)).arrayBuffer();
+    const dec = await ac.decodeAudioData(ab);
+    const off = new OfflineAudioContext(2, DUR * SR, SR); const src = off.createBufferSource(); src.buffer = dec; src.connect(off.destination); src.start(0, 2);
+    const v = await off.startRendering(); const VL = v.getChannelData(0), VR = v.getChannelData(1);
+    const [AL, AR] = accompaniment(DUR * SR);
+    const k = 1.3 * Math.sqrt(E(AL) / E(VL));
+    const voc = [VL.map(x => x * k), VR.map(x => x * k)], acc = [AL, AR];
+    const mix = [AL.map((x, i) => x + voc[0][i]), AR.map((x, i) => x + voc[1][i])];
+    bufs.mix = mix;
+    log(`mix ready: ${DUR}s · baseline (mix vs accompaniment) SDR ${sdr(acc, mix).toFixed(1)} dB`);
+    const model = document.getElementById('model').value;
+    const t0 = performance.now(); let lastS = 0;
+    const res = await MDX.separate(mix[0], mix[1], { model,
+      onStatus: (s, p) => { if (s === 'download' && performance.now() - lastS > 2000) { lastS = performance.now(); log(`downloading model ${(p * 100).toFixed(0)}%`); } if (s === 'init') log('model downloaded, creating session…'); },
+      onProgress: (p, info) => log(`chunk ${(p * 100).toFixed(0)}% · ${info.ep} · ${(info.perChunk / 1000).toFixed(2)} s per 5.9 s chunk`) });
+    const tt = (performance.now() - t0) / 1000;
+    const inst = [res.L, res.R], vest = [mix[0].map((x, i) => x - res.L[i]), mix[1].map((x, i) => x - res.R[i])];
+    bufs.inst = inst; bufs.voc = vest;
+    log(`\nRESULT (${model}, ${res.ep}) total ${tt.toFixed(1)} s for ${DUR} s of audio`);
+    log(`  instrumental SDR vs true accompaniment: ${sdr(acc, inst).toFixed(1)} dB (baseline ${sdr(acc, mix).toFixed(1)})`);
+    log(`  vocal estimate SDR vs true voice: ${sdr(voc, vest).toFixed(1)} dB`);
+    log(`  voice energy left in instrumental (approx): ${(100 * Math.sqrt(Math.max(0, (E(inst[0].map((x, i) => x - acc[0][i])) + E(inst[1].map((x, i) => x - acc[1][i]))) / (E(voc[0]) + E(voc[1]))))).toFixed(0)}% of voice amplitude (includes any damage)`);
+    // instrument-only passthrough: how much does the model change a piece with no voice?
+    const t1 = performance.now();
+    const r2 = await MDX.separate(AL.subarray(0, 12 * SR), AR.subarray(0, 12 * SR), { model });
+    log(`  accompaniment alone through the model: SDR ${sdr([AL.subarray(0, 12 * SR), AR.subarray(0, 12 * SR)], [r2.L, r2.R]).toFixed(1)} dB (higher = left alone), ${((performance.now() - t1) / 1000).toFixed(1)} s`);
+    log('DONE');
+  } catch (e) { log('ERROR: ' + (e && e.stack || e)); }
+}
+function play(which) { const b = bufs[which]; if (!b) return; ac = ac || new AudioContext(); const buf = ac.createBuffer(2, b[0].length, SR); buf.copyToChannel(Float32Array.from(b[0]), 0); buf.copyToChannel(Float32Array.from(b[1]), 1); const s = ac.createBufferSource(); s.buffer = buf; s.connect(ac.destination); s.start(); }
+document.getElementById('go').onclick = run;
+document.getElementById('pm').onclick = () => play('mix');
+document.getElementById('pi').onclick = () => play('inst');
+document.getElementById('pv').onclick = () => play('voc');
+if (location.hash === '#auto') run();
+</script>
+</body>
+</html>
