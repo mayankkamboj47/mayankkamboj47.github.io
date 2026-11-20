@@ -2,6 +2,8 @@ const katex = require('katex');
 
 module.exports = function(eleventyConfig){
     eleventyConfig.addPassthroughCopy('img');
+    // Sing-Along Studio (PWA). index.html goes through Eleventy unchanged; the rest is copied as-is.
+    eleventyConfig.addPassthroughCopy('sing/*.{js,png,webmanifest}');
     eleventyConfig.addFilter('humanise', function(dateString){
         const date = new Date(dateString);
         const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
