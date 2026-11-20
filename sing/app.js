@@ -1,6 +1,6 @@
 'use strict';
 /* Sing-Along Studio — live pitch tracking, melodies, tracks, scoring, karaoke. */
-const VERSION = '0.4.1';
+const VERSION = '0.5';
 
 /* ---------------- helpers ---------------- */
 const $ = (s, el = document) => el.querySelector(s);
@@ -154,11 +154,12 @@ function scheduleGuide(gb, songStart, from, mode = 'orig') {
     const play = (buf, gain) => {
       const src = ctx.createBufferSource(); src.buffer = buf;
       const g = ctx.createGain(); g.gain.value = gain; src.connect(g); g.connect(gb.gain);
-      src.start(when, from); gb.nodes.push(src); return g;
+      src.start(when, from); gb.nodes.push(src); return { src, g };
     };
-    if (mode === 'orig' || !rec.inst) play(rec.buffer, 1);
-    else if (mode === 'vocals') { play(rec.buffer, 1); play(rec.inst, -1); }
-    else { const v = settings.vocals; gb.vox = { orig: play(rec.buffer, v), inst: play(rec.inst, 1 - v) }; }
+    const inst = rec.inst || rec.liveBuf;
+    if (mode === 'orig' || !inst) play(rec.buffer, 1);
+    else if (mode === 'vocals') { play(rec.buffer, 1); gb.instPlay = play(inst, -1); }
+    else { const v = settings.vocals, o = play(rec.buffer, v); gb.instPlay = play(inst, 1 - v); gb.vox = { orig: o.g, inst: gb.instPlay.g }; }
   } else {
     for (const n of S.notes) {
       if (n.t + n.d <= from + 0.01) continue;
@@ -578,8 +579,8 @@ async function start(kind) {
       try { rec.buffer = await decodeAudio(await rec.blob.arrayBuffer()); } catch (e) { hideProgress(); return toast('Couldn’t load this track.'); }
       hideProgress();
     }
-    if ((kind === 'karaoke' || kind === 'vocals') && !rec.inst) { if (!(await waitKaraoke(rec))) return; }
-    if ((kind === 'karaoke' || kind === 'vocals') && sepJobs.has(rec.id)) { toast('A better karaoke version is still being prepared. Playing the current one.'); }
+    if ((kind === 'karaoke' || kind === 'vocals') && !rec.inst && !rec.liveBuf) { if (!(await waitKaraoke(rec))) return; }
+    if ((kind === 'karaoke' || kind === 'vocals') && sepJobs.has(rec.id) && rec.liveBuf) toast(`Playing while the AI works: clean up to ${fmt(rec.readyUntil || 0)}, quick version after that. It improves as you listen.`, 5000);
     else if (kind === 'score' && !rec.inst && settings.vocals < 0.95) toast('Karaoke version is still being prepared, so this plays the original.');
   }
   let from = 0;
@@ -764,6 +765,20 @@ async function aiRun(L, R, model, onStatus, onProgress) {
     return aiRunOnce(keepL, keepR, model, 1, onStatus, onProgress);
   }
 }
+// Swap a newer karaoke buffer into what's playing, on the same sample (seamless).
+function liveSwap(rec, buf) {
+  const gb = S.guide;
+  if (!gb || !gb.instPlay || !buf || !S.item || S.item.rec !== rec || (S.mode !== 'running' && S.mode !== 'replay')) return;
+  const from = S.run ? S.run.from : 0, at = Math.max(ctx.currentTime + 0.25, S.songStart + from), off = at - S.songStart;
+  if (off >= buf.duration) return;
+  const src = ctx.createBufferSource(); src.buffer = buf; src.connect(gb.instPlay.g);
+  src.start(at, Math.max(0, off)); try { gb.instPlay.src.stop(at); } catch (e) {}
+  gb.instPlay.src = src; gb.nodes.push(src);
+}
+function publishLive(rec, L, R, readyUntil) {
+  const b = ctx.createBuffer(2, L.length, rec.buffer.sampleRate); b.copyToChannel(L, 0); b.copyToChannel(R, 1);
+  rec.liveBuf = b; rec.readyUntil = readyUntil; liveSwap(rec, b);
+}
 // Which stretches need the AI: anything within ±4 s of likely voice; most of the track → all of it.
 function voiceRegions(rec) {
   const dur = rec.duration;
@@ -778,12 +793,15 @@ function voiceRegions(rec) {
   const cov = merged.reduce((x, [a, b]) => x + b - a, 0);
   return cov > 0.6 * dur ? [[0, dur]] : merged.filter(([a, b]) => b - a > 0.5);
 }
-async function aiSeparate(rec, tag) {
+async function aiSeparate(rec, tag, base) {
   const buf = rec.buffer, sr = buf.sampleRate, n = buf.length, model = tag.slice(3);
   const oL = buf.getChannelData(0), oR = buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0);
-  const outL = oL.slice(), outR = oR.slice();
   const regions = voiceRegions(rec);
-  if (!regions.length) return [outL, outR];
+  if (!regions.length) return [oL.slice(), oR.slice()];
+  // out starts as the quick version (so there's something to play); finished parts become final
+  const outL = base ? base[0] : oL.slice(), outR = base ? base[1] : oR.slice();
+  let cursor = 0;
+  publishLive(rec, outL, outR, 0);
   const SEG = 60, PAD = 3, segs = [];
   for (const [a, b] of regions) for (let x = a; x < b - 0.05; x += SEG) segs.push([x, Math.min(b, x + SEG)]);
   const total = segs.reduce((x, [a, b]) => x + b - a, 0) || 1;
@@ -814,9 +832,12 @@ async function aiSeparate(rec, tag) {
       seg = [bL.slice(s0 - p0, s1 - p0), bR.slice(s0 - p0, s1 - p0)];
       try { await DB.kput({ id: key, sr, len: s1 - s0, data: toInt16Blob(seg[0], seg[1]) }); } catch (e) {}
     }
-    outL.set(seg[0], s0); outR.set(seg[1], s0);
+    if (s0 > cursor) { outL.set(oL.subarray(cursor, s0), cursor); outR.set(oR.subarray(cursor, s0), cursor); } // voice-free gap: original
+    outL.set(seg[0], s0); outR.set(seg[1], s0); cursor = s1;
+    publishLive(rec, outL, outR, cursor / sr);
     done += b - a; rec.sepP = done / total; rec.sepMsg = `AI karaoke ${Math.round(rec.sepP * 100)}%${eta()} · progress is saved`; karaokeUI(rec);
   }
+  if (cursor < n) { outL.set(oL.subarray(cursor), cursor); outR.set(oR.subarray(cursor), cursor); }
   // fade between the original and the AI version at the edges of the processed stretches
   const F = Math.round(0.75 * sr);
   for (const [a, b] of regions) {
@@ -851,15 +872,15 @@ function prepareKaraoke(rec, { auto = false, tag: forced } = {}) {
     ensureCtx();
     if (!rec.buffer) rec.buffer = await decodeAudio(await rec.blob.arrayBuffer());
     const buf = rec.buffer;
-    try {
-      const c = await DB.kget(rec.id);
-      if (c && c.v === SEP_V && c.tag === want && c.sr === buf.sampleRate && c.len === buf.length) {
-        rec.inst = await int16ToBuffer(c); rec.instTag = want; rec.sepP = 1; rec.sepMsg = ''; karaokeUI(rec); renderLibrary(); return rec.inst;
-      }
-    } catch (e) {}
+    let saved = null;
+    try { const c = await DB.kget(rec.id); if (c && c.v === SEP_V && c.sr === buf.sampleRate && c.len === buf.length) saved = c; } catch (e) {}
+    if (saved && saved.tag === want) { rec.inst = await int16ToBuffer(saved); rec.instTag = want; rec.sepP = 1; rec.sepMsg = ''; karaokeUI(rec); renderLibrary(); return rec.inst; }
     // opening a track only loads saved work; new processing starts when Karaoke is tapped
     // (or resumes by itself if a previous run was interrupted)
-    if (auto && !(want.startsWith('ai') && (await isModelCached(want)) && (await DB.kcount(rec.id + '|' + want + '|').catch(() => 0)) > 0)) { rec.sepP = null; rec.sepMsg = ''; karaokeUI(rec); return null; }
+    if (auto && !(want.startsWith('ai') && (await isModelCached(want)) && (await DB.kcount(rec.id + '|' + want + '|').catch(() => 0)) > 0)) {
+      if (saved && !rec.inst) { rec.inst = await int16ToBuffer(saved); rec.instTag = saved.tag; } // e.g. the quick version
+      rec.sepP = null; rec.sepMsg = ''; karaokeUI(rec); return rec.inst || null;
+    }
     rec.sepP = 0; rec.sepMsg = 'Starting…'; karaokeUI(rec);
     jobWakeLock(true);
     if (!rec.f0t || !rec.f0s) {
@@ -869,11 +890,23 @@ function prepareKaraoke(rec, { auto = false, tag: forced } = {}) {
     }
     let used = want, L, R;
     if (want.startsWith('ai')) {
-      try { [L, R] = await aiSeparate(rec, want); }
+      // a quick version first, so the song can be played while the AI works
+      let base = null;
+      if (rec.inst && rec.instTag === 'dsp') base = [rec.inst.getChannelData(0).slice(), rec.inst.getChannelData(1).slice()];
+      else if (saved && saved.tag === 'dsp') base = await int16ToArrays(saved);
+      else {
+        try {
+          base = await dspSeparate(rec);
+          await DB.kput({ id: rec.id, v: SEP_V, tag: 'dsp', sr: buf.sampleRate, len: base[0].length, data: toInt16Blob(base[0], base[1]) }).catch(() => {});
+        } catch (e) { base = null; }
+      }
+      rec.inst = null;
+      try { [L, R] = await aiSeparate(rec, want, base); }
       catch (e) { toast('AI karaoke couldn’t run (' + e.message + '), so the quick filter is used for now.', 7000); used = 'dsp'; [L, R] = await dspSeparate(rec); }
     } else [L, R] = await dspSeparate(rec);
     const inst = ctx.createBuffer(2, L.length, buf.sampleRate); inst.copyToChannel(L, 0); inst.copyToChannel(R, 1);
-    rec.inst = inst; rec.instTag = used; rec.sepP = 1; rec.sepMsg = ''; karaokeUI(rec); renderLibrary();
+    rec.inst = inst; rec.instTag = used; rec.sepP = 1; rec.sepMsg = ''; liveSwap(rec, inst); rec.liveBuf = null; rec.readyUntil = null;
+    karaokeUI(rec); renderLibrary();
     try { await DB.kput({ id: rec.id, v: SEP_V, tag: used, sr: buf.sampleRate, len: L.length, data: toInt16Blob(L, R) }); await DB.kdelPrefix(rec.id + '|'); } catch (e) {}
     if (used !== 'dsp') toast(`Karaoke ready for “${rec.name}” and saved on this phone.`, 4000);
     return inst;
@@ -903,8 +936,20 @@ async function waitKaraoke(rec) {
   }
   if (want === 'dsp') { kWait = rec; try { await prepareKaraoke(rec); return true; } catch (e) { toast('Couldn’t prepare karaoke.'); return false; } finally { kWait = null; hideProgress(); } }
   prepareKaraoke(rec).catch(() => {});
-  toast('Preparing AI karaoke in the background. Keep the app open; progress is saved if you leave.', 6000);
-  return false;
+  return waitLive(rec);
+}
+// wait until there's something playable (the quick version) while the AI job starts
+async function waitLive(rec) {
+  kWait = null; progress('Getting a quick version ready to play while the AI works…', 0.3);
+  try {
+    for (let i = 0; i < 600; i++) {
+      if (rec.liveBuf || rec.inst) return true;
+      if (!sepJobs.has(rec.id)) return !!rec.inst;
+      $('#progText').textContent = rec.sepMsg || '';
+      await new Promise(r => setTimeout(r, 250));
+    }
+    return false;
+  } finally { hideProgress(); $('#progText').textContent = ''; }
 }
 function askSheet(title, text, buttons) {
   return new Promise(res => {
@@ -1165,6 +1210,10 @@ function updateReadout() {
     needle.style.background = Math.abs(err) <= tol ? COL.good : Math.abs(err) <= tol * 2.2 ? COL.close : COL.off;
   } else needle.style.opacity = 0.25;
   $('#lvl').style.width = mic.on ? Math.min(100, Math.sqrt(live.rms) * 260) + '%' : '0%';
+  // how far the clean AI karaoke reaches while it's being made
+  const rb = $('#readyBar'), rr = S.item && S.item.rec;
+  if (rr && rr.liveBuf && sepJobs.has(rr.id) && S.duration) { rb.hidden = false; rb.firstElementChild.style.width = (100 * clamp((rr.readyUntil || 0) / S.duration, 0, 1)) + '%'; }
+  else rb.hidden = true;
   // scrub & time
   const sc = $('#scrub');
   if (S.duration && S.item && S.item.kind !== 'free') {
@@ -1235,7 +1284,9 @@ function updateTransport() {
   $('#btnStop').hidden = !run;
   const rec = isTrack ? it.rec : null;
   $('#btnKaraoke').textContent = '🎤 Karaoke' + (rec && sepJobs.has(rec.id) && rec.sepP != null ? ' ' + Math.round(rec.sepP * 100) + '%' : '');
-  const ks = $('#kStatus'); const msg = rec ? (rec.sepMsg || (rec.inst ? `Karaoke ready (${engineLabel(rec.instTag)})${rec.instTag === 'dsp' && engineTag() !== 'dsp' ? ' · tap Karaoke again for the AI version' : ''}` : '')) : '';
+  const ks = $('#kStatus');
+  let msg = rec ? (rec.sepMsg || (rec.inst ? `Karaoke ready (${engineLabel(rec.instTag)})${rec.instTag === 'dsp' && engineTag() !== 'dsp' ? ' · tap Karaoke again for the AI version' : ''}` : '')) : '';
+  if (rec && rec.liveBuf && sepJobs.has(rec.id)) msg += ` · you can play it now: clean up to ${fmt(rec.readyUntil || 0)}`;
   ks.textContent = msg; ks.hidden = !msg;
   $('#voxRow').hidden = !isTrack; $('#vocalsOnly').hidden = !isTrack || run;
   $('#btnStop').textContent = S.mode === 'replay' ? '■ Stop playback' : '■ Stop';
