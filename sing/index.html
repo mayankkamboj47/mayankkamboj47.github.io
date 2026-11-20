@@ -76,6 +76,7 @@ input[type=range]{flex:1;accent-color:var(--accent);min-width:0}
 .mic.bad{border-color:#ff808966;color:var(--off)}
 .lvl{width:30px;height:6px;border-radius:3px;background:#2b2c4b;overflow:hidden}
 .lvl i{display:block;height:100%;width:0;background:var(--good);transition:width .06s}
+.kstatus{margin-top:10px;padding:9px 12px;border-radius:10px;background:#ffffff0a;border:1px solid var(--line);font-size:12.5px;font-weight:700;color:var(--muted)}
 .voxrow{display:flex;align-items:center;gap:10px;margin-top:12px;font-weight:700;font-size:13.5px}
 .voxrow b{min-width:40px;text-align:right;font-variant-numeric:tabular-nums}
 .sub .link+.link{margin-left:12px}
@@ -189,6 +190,7 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:18px}
       <button class="btn stop grow" id="btnStop" hidden>■ Stop</button>
       <button class="mic" id="micBtn"><span id="micLbl">Mic off</span><span class="lvl"><i id="lvl"></i></span></button>
     </div>
+    <div class="kstatus" id="kStatus" hidden></div>
     <div class="voxrow" id="voxRow" hidden><span>Singer's voice</span><input type="range" id="sVocals" min="0" max="1" step="0.05" aria-label="Singer's voice volume"><b id="vocalsVal">20%</b></div>
     <div class="sub"><span id="fromLbl"></span><span><button class="link" id="vocalsOnly" hidden>Hear vocals only</button> <button class="link" id="uploadTake">Score a recording…</button></span></div>
 
@@ -206,6 +208,7 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:18px}
       <label class="row"><span>Any octave counts<small>The right note an octave up or down still scores</small></span><input type="checkbox" id="sOct"></label>
       <label class="row"><span>I'm using earphones<small>Off = phone speaker, echo cancelling on</small></span><input type="checkbox" id="sEar"></label>
       <label class="row"><span>Count-in<small>One bar of clicks before melodies</small></span><input type="checkbox" id="sCount"></label>
+      <div class="row"><span>Karaoke engine<small>AI is far cleaner; runs on this phone</small></span><select id="sKara"><option value="ai-hq3">AI: remove all voices</option><option value="ai-kara2">AI: lead vocal only</option><option value="dsp">Quick filter</option></select></div>
       <div class="row"><span>Warm-up repeats<small>Each repeat moves up a semitone</small></span><select id="sReps"><option>1</option><option>3</option><option>5</option><option>8</option></select></div>
       <div class="row"><span>Sync offset<small id="syncVal">0 ms</small></span><input type="range" id="sSync" min="-300" max="300" step="10"></div>
       <div class="row"><span>Mic sensitivity<small id="sensVal">Normal</small></span><input type="range" id="sSens" min="0" max="4" step="1"></div>
@@ -242,7 +245,7 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:18px}
     <h3>How it works</h3>
     <ul style="padding-left:18px;margin:0">
       <li><b>Sing</b> plays the melody and listens to you. Your voice is the line: <span style="color:var(--good)">green</span> is in tune, <span style="color:var(--close)">yellow</span> is close, <span style="color:var(--off)">red</span> is off.</li>
-      <li><b>Tracks:</b> load any song from your phone. The app works out the melody so you can sing along and get scored, and prepares a <b>karaoke</b> version by cutting out the singer. The <b>Singer's voice</b> slider brings them back as a quiet guide, and <b>Hear vocals only</b> plays just the singer so you can learn the tune.</li>
+      <li><b>Tracks:</b> load any song from your phone. The app works out the melody so you can sing along and get scored. Tap <b>Karaoke</b> and an AI on your phone removes the singer (one-time 67 MB download; a few minutes per song; the result is saved so each song is only done once, and progress is kept if you leave). The <b>Singer's voice</b> slider brings them back as a quiet guide, and <b>Hear vocals only</b> plays just the singer.</li>
       <li><b>Range finder</b> (the Range button at the top) moves every melody into a key that fits your voice.</li>
       <li>Drag the slider under the roll to practise <b>from any point</b>.</li>
       <li>Wired earphones give the most accurate results. On the phone speaker, turn "I'm using earphones" off so the mic ignores the music.</li>
@@ -252,12 +255,18 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:18px}
   </div>
 </div>
 
+<!-- Question -->
+<div class="sheet" id="askSheet" hidden>
+  <div class="in"><h3 id="askTitle"></h3><p id="askText"></p><div class="btnrow" id="askBtns"></div></div>
+</div>
+
 <!-- Progress -->
 <div class="sheet" id="progSheet" hidden>
   <div class="in"><h3 id="progTitle">Working…</h3><div class="bar"><i id="progBar"></i></div><p id="progText" style="margin-bottom:0"></p></div>
 </div>
 
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="app.js?v=0.3"></script>
+<script src="sep.js?v=0.4"></script>
+<script src="app.js?v=0.4"></script>
 </body>
 </html>
