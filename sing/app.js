@@ -1,6 +1,6 @@
 'use strict';
 /* Sing-Along Studio — live pitch tracking, melodies, tracks, scoring, karaoke. */
-const VERSION = '0.1';
+const VERSION = '0.2';
 
 /* ---------------- helpers ---------------- */
 const $ = (s, el = document) => el.querySelector(s);
@@ -248,17 +248,151 @@ async function pitchTrack(buffer, { minF = 70, maxF = 1000, hop = 0.02, highpass
     return { t: fr.t, m: w[w.length >> 1] };
   });
 }
+/* ---------- melody extraction from full mixes ----------
+   Centre-channel emphasis (vocals are usually panned centre) + harmonic-sum salience
+   + a Viterbi path through the strongest pitch candidates for a smooth melody line. */
+const FFTS = new Map();
+function fftPlan(N) {
+  if (FFTS.has(N)) return FFTS.get(N);
+  const bits = Math.log2(N) | 0, rev = new Uint32Array(N), cos = new Float32Array(N / 2), sin = new Float32Array(N / 2);
+  for (let i = 0; i < N; i++) { let r = 0; for (let b = 0; b < bits; b++) r |= ((i >> b) & 1) << (bits - 1 - b); rev[i] = r; }
+  for (let i = 0; i < N / 2; i++) { cos[i] = Math.cos(2 * Math.PI * i / N); sin[i] = Math.sin(2 * Math.PI * i / N); }
+  const p = { N, rev, cos, sin }; FFTS.set(N, p); return p;
+}
+function fft(P, re, im) {
+  const { N, rev, cos, sin } = P;
+  for (let i = 0; i < N; i++) { const j = rev[i]; if (j > i) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+  for (let size = 2; size <= N; size <<= 1) {
+    const half = size >> 1, step = N / size;
+    for (let i = 0; i < N; i += size) {
+      for (let j = i, k = 0; j < i + half; j++, k += step) {
+        const a = j + half, c = cos[k], s = sin[k];
+        const tr = re[a] * c + im[a] * s, ti = im[a] * c - re[a] * s;
+        re[a] = re[j] - tr; im[a] = im[j] - ti; re[j] += tr; im[j] += ti;
+      }
+    }
+  }
+}
+async function melodyExtract(buffer, onProgress = () => {}) {
+  const sr0 = buffer.sampleRate, D = Math.max(1, Math.round(sr0 / 22050)), sr = sr0 / D;
+  const L0 = buffer.getChannelData(0), R0 = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : L0;
+  const n = Math.floor(buffer.length / D), Ls = new Float32Array(n), Rs = new Float32Array(n);
+  for (let i = 0; i < n; i++) { let a = 0, b = 0; const o = i * D; for (let j = 0; j < D; j++) { a += L0[o + j]; b += R0[o + j]; } Ls[i] = a / D; Rs[i] = b / D; }
+  const N = 2048, P = fftPlan(N), hop = Math.round(0.02 * sr), binHz = sr / N;
+  const win = new Float32Array(N); for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / N);
+  const nF = Math.max(0, Math.floor((n - N) / hop) + 1);
+  const re = new Float32Array(N), im = new Float32Array(N), mag = new Float32Array(N / 2 + 1);
+  const fMin = 90, fMax = 1000, CENTS = 10, nb = Math.floor(1200 * Math.log2(fMax / fMin) / CENTS) + 1, H = 10, ALPHA = 0.8;
+  const maxBin = Math.min(N / 2 - 2, Math.floor(5000 / binHz));
+  const hIdx = new Int32Array(nb * H), hW = new Float32Array(nb * H);
+  for (let i = 0; i < nb; i++) {
+    const f = fMin * Math.pow(2, i * CENTS / 1200);
+    for (let h = 0; h < H; h++) { const b = Math.floor((h + 1) * f / binHz); hIdx[i * H + h] = b <= maxBin ? b : -1; hW[i * H + h] = Math.pow(ALPHA, h); }
+  }
+  const prior = new Float32Array(nb); // mild preference for the usual singing range (around D#4)
+  for (let i = 0; i < nb; i++) { const m = f2m(fMin * Math.pow(2, i * CENTS / 1200)); prior[i] = Math.exp(-0.5 * Math.pow((m - 63) / 15, 2)); }
+  const fw = new Float32Array(N / 2 + 1);
+  for (let k = 0; k <= N / 2; k++) { const f = k * binHz; fw[k] = f < 60 ? 0 : Math.min(1, Math.pow(f / 200, 1.5)); }
+  const K = 4, cand = new Float32Array(nF * K), csal = new Float32Array(nF * K), peak = new Float32Array(nF), energy = new Float32Array(nF);
+  const sal = new Float32Array(nb);
+  for (let f = 0; f < nF; f++) {
+    if (f % 60 === 0) { onProgress(f / nF * 0.85); await tick(); }
+    const o = f * hop;
+    for (let i = 0; i < N; i++) { re[i] = Ls[o + i] * win[i]; im[i] = Rs[o + i] * win[i]; }
+    fft(P, re, im);
+    let e = 0;
+    for (let k = 1; k <= maxBin + 1; k++) {
+      const a = re[k], b = im[k], c = re[N - k], d = im[N - k];
+      const xr = (a + c) / 2, xi = (b - d) / 2, yr = (b + d) / 2, yi = (c - a) / 2; // left & right spectra
+      const px = xr * xr + xi * xi, py = yr * yr + yi * yi;
+      const cr = xr * yr + xi * yi, ci = xi * yr - xr * yi;
+      const sim = 2 * Math.sqrt(cr * cr + ci * ci) / (px + py + 1e-12);
+      const m4 = sim * sim; const cm = Math.sqrt((xr + yr) * (xr + yr) + (xi + yi) * (xi + yi)) * 0.5 * m4 * m4;
+      mag[k] = Math.sqrt(cm) * fw[k];
+      if (k * binHz > 120) e += cm * cm;
+    }
+    energy[f] = e;
+    let best = 0;
+    for (let i = 0; i < nb; i++) {
+      let s = 0; const base = i * H;
+      let m0 = 0, m1 = 0;
+      for (let h = 0; h < H; h++) { const b = hIdx[base + h]; if (b < 0) break; const m = mag[b] > mag[b + 1] ? mag[b] : mag[b + 1]; s += hW[base + h] * m; if (h === 0) m0 = m; else if (h === 1) m1 = m; }
+      // a real fundamental has energy at f itself; sub-octave ghosts don't
+      s *= (0.35 + 0.65 * Math.min(1, m0 / (0.6 * m1 + 1e-9))) * prior[i];
+      sal[i] = s; if (s > best) best = s;
+    }
+    peak[f] = best;
+    // top-K local maxima
+    for (let k = 0; k < K; k++) { cand[f * K + k] = -1; csal[f * K + k] = 0; }
+    for (let i = 1; i < nb - 1; i++) {
+      const s = sal[i]; if (s <= sal[i - 1] || s < sal[i + 1] || s < best * 0.25) continue;
+      let slot = -1, minS = Infinity;
+      for (let k = 0; k < K; k++) { if (csal[f * K + k] < minS) { minS = csal[f * K + k]; slot = k; } }
+      if (s > minS) {
+        const den = sal[i - 1] - 2 * s + sal[i + 1], off = den !== 0 ? 0.5 * (sal[i - 1] - sal[i + 1]) / den : 0;
+        cand[f * K + slot] = f2m(fMin * Math.pow(2, (i + clamp(off, -0.5, 0.5)) * CENTS / 1200)); csal[f * K + slot] = s;
+      }
+    }
+  }
+  onProgress(0.9); await tick();
+  // voicing: salience and energy relative to the song's loud parts
+  const sp = Array.from(peak).sort((a, b) => a - b), se = Array.from(energy).sort((a, b) => a - b);
+  const pThr = (sp[Math.floor(sp.length * 0.9)] || 0) * 0.32, eThr = (se[Math.floor(se.length * 0.9)] || 0) * 0.02;
+  const voiced = f => peak[f] > 0 && peak[f] >= pThr && energy[f] >= eThr;
+  // Viterbi through candidates within voiced runs
+  const out = [];
+  let f = 0;
+  while (f < nF) {
+    if (!voiced(f)) { f++; continue; }
+    let g2 = f; while (g2 < nF && voiced(g2)) g2++;
+    const len = g2 - f; if (len >= 4) {
+      const cost = new Float32Array(len * K), back = new Int8Array(len * K);
+      for (let t = 0; t < len; t++) {
+        const fr = f + t, mx = Math.max(1e-9, peak[fr]);
+        for (let k = 0; k < K; k++) {
+          const m = cand[fr * K + k];
+          const local = m < 0 ? 1e6 : -Math.log(csal[fr * K + k] / mx + 1e-3);
+          if (t === 0) { cost[k] = local; continue; }
+          let bc = Infinity, bk = 0;
+          for (let j = 0; j < K; j++) {
+            const pm = cand[(fr - 1) * K + j]; if (pm < 0) continue;
+            const jump = Math.abs(m - pm), c = cost[(t - 1) * K + j] + 0.18 * jump + (jump > 7 ? 1.5 : 0);
+            if (c < bc) { bc = c; bk = j; }
+          }
+          cost[t * K + k] = local + (bc === Infinity ? 0 : bc); back[t * K + k] = bk;
+        }
+      }
+      let bk = 0, bc = Infinity; for (let k = 0; k < K; k++) if (cost[(len - 1) * K + k] < bc) { bc = cost[(len - 1) * K + k]; bk = k; }
+      const path = new Array(len);
+      for (let t = len - 1; t >= 0; t--) { path[t] = bk; bk = back[t * K + bk]; }
+      for (let t = 0; t < len; t++) { const m = cand[(f + t) * K + path[t]]; if (m > 0) out.push({ t: ((f + t) * hop + N / 2) / sr, m, s: csal[(f + t) * K + path[t]] }); }
+    }
+    f = g2;
+  }
+  onProgress(1);
+  return out.map((fr, i) => {
+    const w = [];
+    for (let j = i - 2; j <= i + 2; j++) if (j >= 0 && j < out.length && Math.abs(out[j].t - fr.t) <= 0.052) w.push(out[j].m);
+    w.sort((a, b) => a - b);
+    return { t: fr.t, m: w[w.length >> 1], s: fr.s };
+  });
+}
 // Turn a pitch contour into note segments (with hysteresis so vibrato doesn't split notes)
 function contourToNotes(fr, hop = 0.02) {
   const notes = []; let cur = null;
   const push = () => { if (!cur) return; const d = cur.last - cur.start + hop; if (d >= 0.1) notes.push({ t: cur.start - hop / 2, d, midi: Math.round(cur.sum / cur.n), lyr: '' }); };
+  const begin = f => { cur = { start: f.t, last: f.t, sum: f.m, n: 1, ref: Math.round(f.m), lo: f.s || 0, hi: f.s || 0 }; };
   for (const f of fr) {
-    if (cur && f.t - cur.last <= hop * 3.5 && Math.abs(f.m - cur.ref) < 0.75) { cur.last = f.t; cur.sum += f.m; cur.n++; }
-    else { push(); cur = { start: f.t, last: f.t, sum: f.m, n: 1, ref: Math.round(f.m) }; }
+    if (cur && f.t - cur.last <= hop * 3.5 && Math.abs(f.m - cur.ref) < 0.75) {
+      // same pitch: a fresh rise in strength after a dip means a new syllable on the same note
+      if (f.s != null && f.t - cur.start > 0.12 && cur.lo < 0.6 * cur.hi && f.s > 1.7 * cur.lo) { push(); begin(f); continue; }
+      cur.last = f.t; cur.sum += f.m; cur.n++;
+      if (f.s != null) { if (f.s > cur.hi) { cur.hi = f.s; cur.lo = f.s; } else if (f.s < cur.lo) cur.lo = f.s; }
+    } else { push(); begin(f); }
   }
   push();
   const merged = [];
-  for (const nn of notes) { const p = merged[merged.length - 1]; if (p && p.midi === nn.midi && nn.t - (p.t + p.d) < 0.08) p.d = nn.t + nn.d - p.t; else merged.push({ ...nn }); }
+  for (const nn of notes) { const p = merged[merged.length - 1]; if (p && p.midi === nn.midi && nn.t - (p.t + p.d) < 0.03) p.d = nn.t + nn.d - p.t; else merged.push({ ...nn }); }
   return merged;
 }
 function stereoSideRatio(buffer) {
@@ -568,14 +702,14 @@ async function onTrackFile(file) {
   try {
     progress('Reading “' + file.name + '”…', 0.05);
     const buf = await decodeAudio(await file.arrayBuffer());
-    const frames = await pitchTrack(buf, { minF: 80, maxF: 1000, highpass: true, onProgress: p => progress('Finding the melody…', 0.1 + p * 0.9) });
+    const frames = await melodyExtract(buf, p => progress('Finding the melody…', 0.1 + p * 0.9));
     const notes = contourToNotes(frames);
     const rec = { id: 't' + Date.now(), name: file.name.replace(/\.[^.]+$/, ''), blob: file, notes, duration: buf.duration, side: stereoSideRatio(buf), added: Date.now() };
     try { await DB.put(rec); } catch (e) { toast('Couldn’t save the track on this device; it’ll stay until you close the app.'); }
     rec.buffer = buf; S.tracks.unshift(rec);
     hideProgress(); S.tab = 'tracks'; setTabUI(); selectItem(trackItem(rec));
     if (notes.length < 12) toast('Couldn’t find a clear melody. A vocal-only version works best, but Karaoke still works.', 6000);
-    else toast(`Found ${notes.length} melody notes. Tap Sing & score or Karaoke.`);
+    else toast(`Found ${notes.length} melody notes. Tap Sing or Karaoke.`);
   } catch (e) { hideProgress(); toast('Couldn’t read that audio file. Try an mp3, m4a or wav.'); }
 }
 async function deleteTrack(id) {
@@ -756,7 +890,7 @@ function updateReadout() {
   if (m != null && tg) { err = (m - tg.midi) * 100; if (settings.anyOct) err = fold(err); }
   else if (m != null) err = cents;
   const tol = tg ? settings.tol : 10;
-  if (!mic.on) hint = mic.failed ? 'Mic unavailable' : 'Tap the mic to start';
+  if (!mic.on) hint = mic.failed ? 'Mic unavailable' : 'Mic is off';
   else if (m == null) hint = S.mode === 'running' ? 'Sing!' : 'Listening…';
   else if (tg) { const a = Math.abs(err); hint = a > 250 ? 'Aim for ' + noteName(tg.midi) : a <= tol ? '✓ Right on' : err > 0 ? 'Too high ↓' : 'Too low ↑'; }
   else hint = Math.abs(err) <= tol ? '✓ In tune' : (err > 0 ? 'Sharp ' : 'Flat ') + Math.abs(err) + '¢';
@@ -989,4 +1123,4 @@ function init() {
 init();
 
 // exposed for testing
-window.__SAS = { S, settings, yin, pitchTrack, contourToNotes, align, parseMelody, SONGS, WARMUPS, buildWarmup, results, newRun, addFrame, compile, selectItem, start, finish, mic, live };
+window.__SAS = { melodyExtract, S, settings, yin, pitchTrack, contourToNotes, align, parseMelody, SONGS, WARMUPS, buildWarmup, results, newRun, addFrame, compile, selectItem, start, finish, mic, live };
