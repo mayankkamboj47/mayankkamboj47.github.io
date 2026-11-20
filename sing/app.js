@@ -1,6 +1,6 @@
 'use strict';
 /* Sing-Along Studio — live pitch tracking, melodies, tracks, scoring, karaoke. */
-const VERSION = '0.3';
+const VERSION = '0.4';
 
 /* ---------------- helpers ---------------- */
 const $ = (s, el = document) => el.querySelector(s);
@@ -20,7 +20,7 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem('sas.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem('sas.' + k, JSON.stringify(v)); } catch (e) {} }
 };
-const DEFAULTS = { fit: true, transpose: 0, speed: 1, guideVol: 0.7, tol: 50, anyOct: true, earphones: false, countIn: true, reps: 5, syncMs: 0, vocals: 0.2, sens: 2, range: null, bannerOff: false };
+const DEFAULTS = { fit: true, transpose: 0, speed: 1, guideVol: 0.7, tol: 50, anyOct: true, earphones: false, countIn: true, reps: 5, syncMs: 0, vocals: 0.2, karaoke: 'ai-hq3', sens: 2, range: null, bannerOff: false };
 const settings = Object.assign({}, DEFAULTS, store.get('settings', {}));
 const saveSettings = () => store.set('settings', settings);
 const bests = store.get('bests', {});
@@ -554,7 +554,7 @@ function selectItem(item) {
   stopAll();
   S.item = item; S.reviewT = 0;
   for (const r of S.tracks) if (r !== item.rec && !sepJobs.has(r.id)) { r.buffer = null; r.inst = null; }
-  if (item.kind === 'track') prepareKaraoke(item.rec).catch(() => {});
+  if (item.kind === 'track') prepareKaraoke(item.rec, { auto: true }).catch(() => {});
   if (item.kind === 'free') { ensureCtx(); S.free.t0 = ctx.currentTime; S.free.frames = []; micOn(); }
   compile();
   renderLibrary(); renderNowPlaying(); updateTransport();
@@ -579,6 +579,7 @@ async function start(kind) {
       hideProgress();
     }
     if ((kind === 'karaoke' || kind === 'vocals') && !rec.inst) { if (!(await waitKaraoke(rec))) return; }
+    if ((kind === 'karaoke' || kind === 'vocals') && sepJobs.has(rec.id)) { toast('A better karaoke version is still being prepared. Playing the current one.'); }
     else if (kind === 'score' && !rec.inst && settings.vocals < 0.95) toast('Karaoke version is still being prepared, so this plays the original.');
   }
   let from = 0;
@@ -693,70 +694,220 @@ const DB = {
   kget(id) { return this.tx('karaoke', 'readonly', s => s.get(id)); },
   kput(o) { return this.tx('karaoke', 'readwrite', s => s.put(o)); },
   kdel(id) { return this.tx('karaoke', 'readwrite', s => s.delete(id)); },
+  kcount(p) { return this.tx('karaoke', 'readonly', s => s.count(IDBKeyRange.bound(p, p + '\uffff'))); },
+  kdelPrefix(p) { return this.tx('karaoke', 'readwrite', s => s.delete(IDBKeyRange.bound(p, p + '\uffff'))); },
 };
-const storable = r => ({ id: r.id, name: r.name, blob: r.blob, notes: r.notes, duration: r.duration, side: r.side, added: r.added, f0t: r.f0t, f0m: r.f0m });
+const storable = r => ({ id: r.id, name: r.name, blob: r.blob, notes: r.notes, duration: r.duration, side: r.side, added: r.added, f0t: r.f0t, f0m: r.f0m, f0s: r.f0s });
 
-/* ---------------- karaoke (vocal separation in a worker) ---------------- */
-const SEP_V = 1, sepJobs = new Map();
-let kWait = null;
+/* ---------------- karaoke ----------------
+   'ai-hq3' / 'ai-kara2': UVR MDX-Net model on the device (mdx.js in aiworker.js), only over the
+   stretches the voice detector flags (sep.js voiceProb), in 60 s pieces saved as they finish.
+   'dsp': the quick filter in sep.js. Finished karaoke tracks are kept in IndexedDB. */
+const SEP_V = 2, sepJobs = new Map();
+const AI_MB = { 'ai-hq3': 67, 'ai-kara2': 53 };
+let kWait = null, jobWake = null;
 function toInt16Blob(L, R) {
   const n = L.length, a = new Int16Array(n * 2);
   for (let i = 0; i < n; i++) { a[2 * i] = clamp(L[i], -1, 1) * 32767; a[2 * i + 1] = clamp(R[i], -1, 1) * 32767; }
   return new Blob([a.buffer]);
 }
-async function int16ToBuffer(c) {
+async function int16ToArrays(c) {
   const a = new Int16Array(await c.data.arrayBuffer()), L = new Float32Array(c.len), R = new Float32Array(c.len);
   for (let i = 0; i < c.len; i++) { L[i] = a[2 * i] / 32767; R[i] = a[2 * i + 1] / 32767; }
-  const b = ctx.createBuffer(2, c.len, c.sr); b.copyToChannel(L, 0); b.copyToChannel(R, 1); return b;
+  return [L, R];
 }
+async function int16ToBuffer(c) { const [L, R] = await int16ToArrays(c); const b = ctx.createBuffer(2, c.len, c.sr); b.copyToChannel(L, 0); b.copyToChannel(R, 1); return b; }
+const engineTag = () => settings.karaoke || 'ai-hq3';
+const engineLabel = t => t === 'dsp' ? 'quick filter' : t === 'ai-kara2' ? 'AI (lead vocal)' : 'AI';
 function karaokeUI(rec) {
-  if (kWait === rec) progress('Preparing karaoke…', rec.sepP);
+  if (kWait === rec) progress('Preparing karaoke…', rec.sepP || 0);
   if (S.item && S.item.rec === rec) { updateTransport(); if (rec.sepP === 1) renderNowPlaying(); }
 }
-function prepareKaraoke(rec) {
-  if (rec.inst) return Promise.resolve(rec.inst);
+async function resampleChans(chs, srIn, srOut, outLen) {
+  const n = chs[0].length, len = outLen || Math.round(n * srOut / srIn);
+  if (srIn === srOut) return chs.map(c => { const o = new Float32Array(len); o.set(c.subarray(0, Math.min(len, c.length))); return o; });
+  const oc = new OfflineAudioContext(chs.length, len, srOut), b = oc.createBuffer(chs.length, n, srIn);
+  chs.forEach((c, i) => b.copyToChannel(c, i));
+  const src = oc.createBufferSource(); src.buffer = b; src.connect(oc.destination); src.start();
+  const r = await oc.startRendering(); return chs.map((_, i) => r.getChannelData(i).slice());
+}
+// AI worker (retries on a single core if the multi-core runtime won't start on this phone)
+let aiW = null, aiSeq = 0;
+function aiThreads() { let broken = false; try { broken = localStorage.getItem('sas.aiOneCore') === '1'; } catch (e) {} return self.crossOriginIsolated && !broken ? Math.min(4, navigator.hardwareConcurrency || 2) : 1; }
+function aiRunOnce(L, R, model, threads, onStatus, onProgress) {
+  if (!aiW) aiW = new Worker('aiworker.js?v=' + VERSION);
+  const w = aiW, id = ++aiSeq;
+  return new Promise((res, rej) => {
+    const h = e => {
+      const d = e.data; if (d.id !== id) return;
+      if (d.type === 'status') onStatus(d.s, d.p, d.msg);
+      else if (d.type === 'progress') onProgress(d.p, d.info);
+      else { w.removeEventListener('message', h); if (d.type === 'done') res(d); else rej(new Error(d.message)); }
+    };
+    w.addEventListener('message', h);
+    w.onerror = ev => { w.removeEventListener('message', h); rej(new Error(ev.message || 'AI worker failed')); };
+    w.postMessage({ cmd: 'separate', id, L, R, model, gpu: settings.aiGpu !== false, threads }, [L.buffer, R.buffer]);
+  });
+}
+async function aiRun(L, R, model, onStatus, onProgress) {
+  const threads = aiThreads(), keepL = threads > 1 ? L.slice() : null, keepR = threads > 1 ? R.slice() : null;
+  try { return await aiRunOnce(L, R, model, threads, onStatus, onProgress); }
+  catch (e) {
+    if (threads <= 1) throw e;
+    try { localStorage.setItem('sas.aiOneCore', '1'); } catch (x) {}
+    if (aiW) { aiW.terminate(); aiW = null; }
+    return aiRunOnce(keepL, keepR, model, 1, onStatus, onProgress);
+  }
+}
+// Which stretches need the AI: anything within ±4 s of likely voice; most of the track → all of it.
+function voiceRegions(rec) {
+  const dur = rec.duration;
+  if (!rec.f0t || !rec.f0t.length || typeof voiceProb !== 'function') return [[0, dur]];
+  const vp = voiceProb(rec.f0t, rec.f0m, rec.f0s || null), g = vp.grid, step = vp.step, n = g.length, D = Math.round(4 / step);
+  const dil = new Uint8Array(n);
+  let last = -1e9; for (let i = 0; i < n; i++) { if (g[i] > 0.1) last = i; if (i - last <= D) dil[i] = 1; }
+  let next = 1e9; for (let i = n - 1; i >= 0; i--) { if (g[i] > 0.1) next = i; if (next - i <= D) dil[i] = 1; }
+  const regs = []; let st = -1;
+  for (let i = 0; i <= n; i++) { const on = i < n && dil[i]; if (on && st < 0) st = i; if (!on && st >= 0) { regs.push([st * step, Math.min(dur, i * step)]); st = -1; } }
+  const merged = []; for (const r of regs) { const p = merged[merged.length - 1]; if (p && r[0] - p[1] < 8) p[1] = r[1]; else merged.push(r.slice()); }
+  const cov = merged.reduce((x, [a, b]) => x + b - a, 0);
+  return cov > 0.6 * dur ? [[0, dur]] : merged.filter(([a, b]) => b - a > 0.5);
+}
+async function aiSeparate(rec, tag) {
+  const buf = rec.buffer, sr = buf.sampleRate, n = buf.length, model = tag.slice(3);
+  const oL = buf.getChannelData(0), oR = buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0);
+  const outL = oL.slice(), outR = oR.slice();
+  const regions = voiceRegions(rec);
+  if (!regions.length) return [outL, outR];
+  const SEG = 60, PAD = 3, segs = [];
+  for (const [a, b] of regions) for (let x = a; x < b - 0.05; x += SEG) segs.push([x, Math.min(b, x + SEG)]);
+  const total = segs.reduce((x, [a, b]) => x + b - a, 0) || 1;
+  let done = 0, worked = 0, spent = 0;
+  const eta = () => { if (worked < 3) return ''; const left = (total - done) * spent / worked; return left > 90 ? ` · about ${Math.round(left / 60)} min left` : left > 5 ? ` · under ${Math.ceil(left / 60) || 1} min left` : ''; };
+  for (const [a, b] of segs) {
+    const key = `${rec.id}|${tag}|${a.toFixed(2)}`, s0 = Math.round(a * sr), s1 = Math.min(n, Math.round(b * sr));
+    let seg = null;
+    try { const c = await DB.kget(key); if (c && c.sr === sr && c.len === s1 - s0) seg = await int16ToArrays(c); } catch (e) {}
+    if (!seg) {
+      const p0 = Math.max(0, Math.round((a - PAD) * sr)), p1 = Math.min(n, Math.round((b + PAD) * sr));
+      const [iL, iR] = await resampleChans([oL.subarray(p0, p1), oR.subarray(p0, p1)], sr, 44100);
+      const t0 = performance.now();
+      const res = await aiRun(iL, iR, model,
+        (st, p, msg) => {
+          if (st === 'download') { rec.sepMsg = `Downloading the AI model (${AI_MB[tag]} MB, one time): ${Math.round(p * 100)}%`; karaokeUI(rec); }
+          else if (st === 'init') { rec.sepMsg = 'Setting up the AI on this phone (can take a minute the first time)…'; karaokeUI(rec); }
+          else if (st === 'gpu-failed') { settings.aiGpu = false; saveSettings(); toast('The phone’s GPU didn’t cooperate, so the AI is using the CPU (slower).', 5000); }
+        },
+        (p, info) => {
+          rec.sepP = (done + p * (b - a)) / total;
+          rec.sepMsg = `AI karaoke ${Math.round(rec.sepP * 100)}% (${info && info.ep === 'webgpu' ? 'GPU' : 'CPU'})${eta()} · progress is saved`;
+          karaokeUI(rec);
+        });
+      spent += (performance.now() - t0) / 1000; worked += b - a;
+      const [bL, bR] = await resampleChans([res.L, res.R], 44100, sr, p1 - p0);
+      seg = [bL.slice(s0 - p0, s1 - p0), bR.slice(s0 - p0, s1 - p0)];
+      try { await DB.kput({ id: key, sr, len: s1 - s0, data: toInt16Blob(seg[0], seg[1]) }); } catch (e) {}
+    }
+    outL.set(seg[0], s0); outR.set(seg[1], s0);
+    done += b - a; rec.sepP = done / total; rec.sepMsg = `AI karaoke ${Math.round(rec.sepP * 100)}%${eta()} · progress is saved`; karaokeUI(rec);
+  }
+  // fade between the original and the AI version at the edges of the processed stretches
+  const F = Math.round(0.75 * sr);
+  for (const [a, b] of regions) {
+    const s0 = Math.round(a * sr), s1 = Math.min(n, Math.round(b * sr));
+    if (s0 > 0) for (let i = 0; i < F && s0 + i < s1; i++) { const w = i / F, j = s0 + i; outL[j] = w * outL[j] + (1 - w) * oL[j]; outR[j] = w * outR[j] + (1 - w) * oR[j]; }
+    if (s1 < n) for (let i = 0; i < F && s1 - 1 - i >= s0; i++) { const w = i / F, j = s1 - 1 - i; outL[j] = w * outL[j] + (1 - w) * oL[j]; outR[j] = w * outR[j] + (1 - w) * oR[j]; }
+  }
+  return [outL, outR];
+}
+function dspSeparate(rec) {
+  const buf = rec.buffer;
+  const L = buf.getChannelData(0).slice(), R = (buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0)).slice();
+  const mono = buf.numberOfChannels < 2 || (rec.side != null && rec.side < 0.015);
+  return new Promise((res, rej) => {
+    const w = new Worker('sep.js?v=' + VERSION);
+    w.onmessage = e => {
+      const d = e.data;
+      if (d.type === 'progress') { rec.sepP = d.p * 0.98; rec.sepMsg = `Quick karaoke ${Math.round(rec.sepP * 100)}%`; karaokeUI(rec); }
+      else if (d.type === 'done') { w.terminate(); res([d.L, d.R]); }
+      else { w.terminate(); rej(new Error(d.message)); }
+    };
+    w.onerror = e => { w.terminate(); rej(new Error(e.message || 'worker failed')); };
+    w.postMessage({ L, R, sr: buf.sampleRate, f0t: rec.f0t, f0m: rec.f0m, f0s: rec.f0s || null, opts: { mono } }, [L.buffer, R.buffer]);
+  });
+}
+// auto: only use what's free (cache, or AI when its model is already downloaded)
+function prepareKaraoke(rec, { auto = false, tag: forced } = {}) {
+  const want = forced || engineTag();
+  if (rec.inst && rec.instTag === want) return Promise.resolve(rec.inst);
   if (sepJobs.has(rec.id)) return sepJobs.get(rec.id);
   const job = (async () => {
-    ensureCtx(); rec.sepP = 0; karaokeUI(rec);
+    ensureCtx();
     if (!rec.buffer) rec.buffer = await decodeAudio(await rec.blob.arrayBuffer());
     const buf = rec.buffer;
     try {
       const c = await DB.kget(rec.id);
-      if (c && c.v === SEP_V && c.sr === buf.sampleRate && c.len === buf.length) { rec.inst = await int16ToBuffer(c); rec.sepP = 1; karaokeUI(rec); renderLibrary(); return rec.inst; }
+      if (c && c.v === SEP_V && c.tag === want && c.sr === buf.sampleRate && c.len === buf.length) {
+        rec.inst = await int16ToBuffer(c); rec.instTag = want; rec.sepP = 1; rec.sepMsg = ''; karaokeUI(rec); renderLibrary(); return rec.inst;
+      }
     } catch (e) {}
-    if (!rec.f0t) {
-      const fr = await melodyExtract(buf, p => { rec.sepP = p * 0.3; karaokeUI(rec); });
-      rec.f0t = Float32Array.from(fr.map(x => x.t)); rec.f0m = Float32Array.from(fr.map(x => x.m));
+    // opening a track only loads saved work; new processing starts when Karaoke is tapped
+    // (or resumes by itself if a previous run was interrupted)
+    if (auto && !(want.startsWith('ai') && (await isModelCached(want)) && (await DB.kcount(rec.id + '|' + want + '|').catch(() => 0)) > 0)) { rec.sepP = null; rec.sepMsg = ''; karaokeUI(rec); return null; }
+    rec.sepP = 0; rec.sepMsg = 'Starting…'; karaokeUI(rec);
+    jobWakeLock(true);
+    if (!rec.f0t || !rec.f0s) {
+      const fr = await melodyExtract(buf, p => { rec.sepMsg = `Analysing the song ${Math.round(p * 100)}%`; karaokeUI(rec); });
+      rec.f0t = Float32Array.from(fr.map(x => x.t)); rec.f0m = Float32Array.from(fr.map(x => x.m)); rec.f0s = Float32Array.from(fr.map(x => x.s || 0));
       try { await DB.put(storable(rec)); } catch (e) {}
     }
-    const p0 = rec.sepP || 0;
-    const L = buf.getChannelData(0).slice(), R = (buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0)).slice();
-    const mono = buf.numberOfChannels < 2 || (rec.side != null && rec.side < 0.015);
-    const [oL, oR] = await new Promise((res, rej) => {
-      const w = new Worker('sep.js?v=' + VERSION);
-      w.onmessage = e => {
-        const d = e.data;
-        if (d.type === 'progress') { rec.sepP = p0 + (1 - p0) * d.p * 0.98; karaokeUI(rec); }
-        else if (d.type === 'done') { w.terminate(); res([d.L, d.R]); }
-        else { w.terminate(); rej(new Error(d.message)); }
-      };
-      w.onerror = e => { w.terminate(); rej(new Error(e.message || 'worker failed')); };
-      w.postMessage({ L, R, sr: buf.sampleRate, f0t: rec.f0t, f0m: rec.f0m, opts: { mono } }, [L.buffer, R.buffer]);
-    });
-    const inst = ctx.createBuffer(2, oL.length, buf.sampleRate); inst.copyToChannel(oL, 0); inst.copyToChannel(oR, 1);
-    rec.inst = inst; rec.sepP = 1; karaokeUI(rec); renderLibrary();
-    try { await DB.kput({ id: rec.id, v: SEP_V, sr: buf.sampleRate, len: oL.length, data: toInt16Blob(oL, oR) }); } catch (e) {}
+    let used = want, L, R;
+    if (want.startsWith('ai')) {
+      try { [L, R] = await aiSeparate(rec, want); }
+      catch (e) { toast('AI karaoke couldn’t run (' + e.message + '), so the quick filter is used for now.', 7000); used = 'dsp'; [L, R] = await dspSeparate(rec); }
+    } else [L, R] = await dspSeparate(rec);
+    const inst = ctx.createBuffer(2, L.length, buf.sampleRate); inst.copyToChannel(L, 0); inst.copyToChannel(R, 1);
+    rec.inst = inst; rec.instTag = used; rec.sepP = 1; rec.sepMsg = ''; karaokeUI(rec); renderLibrary();
+    try { await DB.kput({ id: rec.id, v: SEP_V, tag: used, sr: buf.sampleRate, len: L.length, data: toInt16Blob(L, R) }); await DB.kdelPrefix(rec.id + '|'); } catch (e) {}
+    if (used !== 'dsp') toast(`Karaoke ready for “${rec.name}” and saved on this phone.`, 4000);
     return inst;
   })();
   sepJobs.set(rec.id, job);
-  job.then(() => sepJobs.delete(rec.id), () => { sepJobs.delete(rec.id); rec.sepP = null; karaokeUI(rec); });
+  const end = () => { sepJobs.delete(rec.id); if (![...sepJobs.keys()].length) jobWakeLock(false); };
+  job.then(end, e => { end(); rec.sepP = null; rec.sepMsg = 'Karaoke failed: ' + (e && e.message || e); karaokeUI(rec); });
   return job;
 }
+async function isModelCached(tag) { try { const url = { 'ai-hq3': 'UVR-MDX-NET-Inst_HQ_3.onnx', 'ai-kara2': 'UVR_MDXNET_KARA_2.onnx' }[tag]; const c = await caches.open('sing-models'); return !!(await c.match('https://huggingface.co/debugzxcv/uvr/resolve/main/' + url)); } catch (e) { return false; } }
+async function jobWakeLock(on) {
+  try {
+    if (on && 'wakeLock' in navigator && !jobWake) jobWake = await navigator.wakeLock.request('screen');
+    if (!on && jobWake) { jobWake.release(); jobWake = null; }
+  } catch (e) {}
+}
+// called when the user asks for karaoke / vocals-only; returns true if it's ready to play now
 async function waitKaraoke(rec) {
-  kWait = rec; progress('Preparing karaoke…', rec.sepP || 0);
-  try { await prepareKaraoke(rec); return true; }
-  catch (e) { toast('Couldn’t prepare karaoke for this track.'); return false; }
-  finally { kWait = null; hideProgress(); }
+  const want = engineTag();
+  if (sepJobs.has(rec.id)) { toast('Karaoke is still being prepared: see the progress under the buttons.'); return false; }
+  if (want.startsWith('ai') && !(await isModelCached(want))) {
+    const choice = await askSheet('Download the AI vocal remover?',
+      `For clean karaoke the app uses an AI model that runs on your phone (your songs never leave it). It's a one-time ${AI_MB[want]} MB download (Wi-Fi recommended). Preparing a song then takes a few minutes, and the result is saved so each song is only done once.`,
+      [['quick', 'Quick filter for now'], ['ai', `Download (${AI_MB[want]} MB)`]]);
+    if (choice === 'quick') { kWait = rec; try { await prepareKaraoke(rec, { tag: 'dsp' }); return true; } catch (e) { toast('Couldn’t prepare karaoke.'); return false; } finally { kWait = null; hideProgress(); } }
+    if (choice !== 'ai') return false;
+  }
+  if (want === 'dsp') { kWait = rec; try { await prepareKaraoke(rec); return true; } catch (e) { toast('Couldn’t prepare karaoke.'); return false; } finally { kWait = null; hideProgress(); } }
+  prepareKaraoke(rec).catch(() => {});
+  toast('Preparing AI karaoke in the background. Keep the app open; progress is saved if you leave.', 6000);
+  return false;
+}
+function askSheet(title, text, buttons) {
+  return new Promise(res => {
+    const sh = $('#askSheet'); $('#askTitle').textContent = title; $('#askText').textContent = text;
+    const row = $('#askBtns'); row.innerHTML = '';
+    for (const [v, label] of buttons) { const b = document.createElement('button'); b.className = 'btn' + (v === buttons[0][0] && buttons.length > 1 ? ' sec' : ''); b.textContent = label; b.onclick = () => { sh.hidden = true; res(v); }; row.appendChild(b); }
+    sh.onclick = e => { if (e.target === sh) { sh.hidden = true; res(null); } };
+    sh.hidden = false;
+  });
 }
 
 async function loadTracks() {
@@ -771,20 +922,58 @@ async function onTrackFile(file) {
     const frames = await melodyExtract(buf, p => progress('Finding the melody…', 0.1 + p * 0.9));
     const notes = contourToNotes(frames);
     const rec = { id: 't' + Date.now(), name: file.name.replace(/\.[^.]+$/, ''), blob: file, notes, duration: buf.duration, side: stereoSideRatio(buf), added: Date.now(),
-      f0t: Float32Array.from(frames.map(x => x.t)), f0m: Float32Array.from(frames.map(x => x.m)) };
+      f0t: Float32Array.from(frames.map(x => x.t)), f0m: Float32Array.from(frames.map(x => x.m)), f0s: Float32Array.from(frames.map(x => x.s || 0)) };
     try { await DB.put(storable(rec)); } catch (e) { toast('Couldn’t save the track on this device; it’ll stay until you close the app.'); }
     rec.buffer = buf; S.tracks.unshift(rec);
     hideProgress(); S.tab = 'tracks'; setTabUI(); selectItem(trackItem(rec));
     if (notes.length < 12) toast('Couldn’t find a clear melody. A vocal-only version works best, but Karaoke still works.', 6000);
-    else toast(`Found ${notes.length} melody notes. Karaoke is being prepared…`);
+    else toast(`Found ${notes.length} melody notes. Tap Karaoke to make the karaoke version.`);
   } catch (e) { hideProgress(); toast('Couldn’t read that audio file. Try an mp3, m4a or wav.'); }
 }
 async function deleteTrack(id) {
   if (!confirm('Remove this track from the app?')) return;
-  try { await DB.del(id); await DB.kdel(id); } catch (e) {}
+  try { await DB.del(id); await DB.kdel(id); await DB.kdelPrefix(id + '|'); } catch (e) {}
   S.tracks = S.tracks.filter(t => t.id !== id);
   if (S.item && S.item.rec && S.item.rec.id === id) { S.item = null; compile(); renderNowPlaying(); updateTransport(); }
   renderLibrary();
+}
+
+/* ---------------- demo track (#demo) ----------------
+   Voice: "Breves dies hominis", sung by Magdalen Kadel, released into the public domain (Wikimedia Commons).
+   Band: synthesised here. */
+function wavBlob(chs, sr) {
+  const n = chs[0].length, ch = chs.length, b = new DataView(new ArrayBuffer(44 + n * ch * 2));
+  const w = (o, str) => { for (let i = 0; i < str.length; i++) b.setUint8(o + i, str.charCodeAt(i)); };
+  w(0, 'RIFF'); b.setUint32(4, 36 + n * ch * 2, true); w(8, 'WAVEfmt '); b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, ch, true);
+  b.setUint32(24, sr, true); b.setUint32(28, sr * ch * 2, true); b.setUint16(32, ch * 2, true); b.setUint16(34, 16, true); w(36, 'data'); b.setUint32(40, n * ch * 2, true);
+  let o = 44; for (let i = 0; i < n; i++) for (let c = 0; c < ch; c++) { b.setInt16(o, clamp(chs[c][i], -1, 1) * 32767, true); o += 2; }
+  return new Blob([b.buffer], { type: 'audio/wav' });
+}
+function demoBand(n, SR) {
+  const L = new Float32Array(n), R = new Float32Array(n), spb = 60 / 96, chords = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]];
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647 - 0.5;
+  for (let b = 0; b * spb < n / SR; b++) {
+    const ch = chords[Math.floor(b / 4) % 4], t0 = Math.round(b * spb * SR);
+    ch.forEach((m, j) => { const f = m2f(m), pan = j / 2; for (let i = 0; i < spb * SR && t0 + i < n; i++) { const t = i / SR, env = Math.exp(-t * 2.5); let v = 0; for (let h = 1; h <= 6; h++) v += Math.sin(2 * Math.PI * f * h * t) / (h * h); L[t0 + i] += 0.06 * v * env * (1 - pan * 0.6); R[t0 + i] += 0.06 * v * env * (0.4 + pan * 0.6); } });
+    if (b % 2 === 0) { const f = m2f(ch[0] - 24); for (let i = 0; i < 2 * spb * SR && t0 + i < n; i++) { const t = i / SR, v = 0.18 * Math.sin(2 * Math.PI * f * t) * Math.exp(-t * 1.2); L[t0 + i] += v; R[t0 + i] += v; } }
+    for (let i = 0; i < 0.12 * SR && t0 + i < n; i++) { const t = i / SR, v = b % 2 === 0 ? 0.35 * Math.sin(2 * Math.PI * (50 + 70 * Math.exp(-t * 30)) * t) * Math.exp(-t * 20) : 0.12 * rnd() * Math.exp(-t * 25); L[t0 + i] += v; R[t0 + i] += v; }
+  }
+  return [L, R];
+}
+async function loadDemo() {
+  ensureCtx();
+  try {
+    progress('Building the demo song…', 0.2);
+    const ab = await (await fetch('https://upload.wikimedia.org/wikipedia/commons/d/dd/Breves_dies_hominis.ogg')).arrayBuffer();
+    const v = await decodeAudio(ab), SR = 44100, DUR = 30, n = DUR * SR;
+    const oc = new OfflineAudioContext(2, n, SR), src = oc.createBufferSource(); src.buffer = v; src.connect(oc.destination); src.start(0, 2);
+    const vr = await oc.startRendering(), [AL, AR] = demoBand(n, SR);
+    const VL = vr.getChannelData(0), VR = vr.getChannelData(1);
+    let ea = 0, ev = 0; for (let i = 0; i < n; i++) { ea += AL[i] * AL[i]; ev += VL[i] * VL[i]; }
+    const k = 1.3 * Math.sqrt(ea / (ev || 1)), mix = [AL.map((x, i) => (x + VL[i] * k) * 0.8), AR.map((x, i) => (x + VR[i] * k) * 0.8)];
+    hideProgress();
+    await onTrackFile(new File([wavBlob(mix, SR)], 'Demo (public-domain singer + synth band).wav', { type: 'audio/wav' }));
+  } catch (e) { hideProgress(); toast('Couldn’t build the demo (offline?).'); }
 }
 
 /* ---------------- range finder ---------------- */
@@ -1039,7 +1228,9 @@ function updateTransport() {
   $('#btnSing').hidden = run || isFree; $('#btnListen').hidden = run || isFree; $('#btnKaraoke').hidden = run || !isTrack;
   $('#btnStop').hidden = !run;
   const rec = isTrack ? it.rec : null;
-  $('#btnKaraoke').textContent = '🎤 Karaoke' + (rec && !rec.inst && rec.sepP != null ? ' ' + Math.round(rec.sepP * 100) + '%' : '');
+  $('#btnKaraoke').textContent = '🎤 Karaoke' + (rec && sepJobs.has(rec.id) && rec.sepP != null ? ' ' + Math.round(rec.sepP * 100) + '%' : '');
+  const ks = $('#kStatus'); const msg = rec ? (rec.sepMsg || (rec.inst ? `Karaoke ready (${engineLabel(rec.instTag)})${rec.instTag === 'dsp' && engineTag() !== 'dsp' ? ' · tap Karaoke again for the AI version' : ''}` : '')) : '';
+  ks.textContent = msg; ks.hidden = !msg;
   $('#voxRow').hidden = !isTrack; $('#vocalsOnly').hidden = !isTrack || run;
   $('#btnStop').textContent = S.mode === 'replay' ? '■ Stop playback' : '■ Stop';
   $('#btnSing').disabled = !it; $('#btnListen').disabled = !it;
@@ -1127,7 +1318,7 @@ function syncSettingsUI() {
   $('#sVol').value = settings.guideVol;
   $$('#sTol button').forEach(b => b.classList.toggle('on', +b.dataset.v === settings.tol));
   $('#sOct').checked = settings.anyOct; $('#sEar').checked = settings.earphones; $('#sCount').checked = settings.countIn;
-  $('#sReps').value = String(settings.reps);
+  $('#sReps').value = String(settings.reps); $('#sKara').value = engineTag();
   $('#sVocals').value = settings.vocals; $('#vocalsVal').textContent = Math.round(settings.vocals * 100) + '%';
   $('#sSync').value = settings.syncMs; $('#syncVal').textContent = (settings.syncMs > 0 ? '+' : '') + settings.syncMs + ' ms';
   $('#sSens').value = settings.sens; $('#sensVal').textContent = SENS_LBL[settings.sens];
@@ -1149,6 +1340,7 @@ function bindSettings() {
   $('#sEar').onchange = e => { settings.earphones = e.target.checked; changed(false); if (mic.on) micOn(); };
   $('#sCount').onchange = e => { settings.countIn = e.target.checked; changed(false); };
   $('#sReps').onchange = e => { settings.reps = +e.target.value; changed(true); };
+  $('#sKara').onchange = e => { settings.karaoke = e.target.value; changed(false); if (S.item && S.item.rec) { S.item.rec.inst = null; S.item.rec.sepMsg = ''; prepareKaraoke(S.item.rec, { auto: true }).catch(() => {}); } };
   $('#sVocals').oninput = e => {
     settings.vocals = +e.target.value; changed(false);
     const vx = S.guide && S.guide.vox; if (vx) { vx.orig.gain.value = settings.vocals; vx.inst.gain.value = 1 - settings.vocals; }
@@ -1163,7 +1355,11 @@ function init() {
   $$('.tabs button').forEach(b => b.onclick = () => { S.tab = b.dataset.tab; setTabUI(); renderLibrary(); });
   $('#btnSing').onclick = () => start('score');
   $('#btnListen').onclick = () => start('listen');
-  $('#btnKaraoke').onclick = () => start('karaoke');
+  $('#btnKaraoke').onclick = async () => {
+    const rec = S.item && S.item.rec;
+    if (rec && rec.inst && rec.instTag === 'dsp' && engineTag() !== 'dsp' && !sepJobs.has(rec.id) && (await isModelCached(engineTag()))) { prepareKaraoke(rec).catch(() => {}); toast('Making the AI version in the background; the quick one plays for now.', 5000); }
+    start('karaoke');
+  };
   $('#vocalsOnly').onclick = () => start('vocals');
   $('#btnStop').onclick = () => finish();
   $('#micBtn').onclick = async () => { if (mic.on) { if (S.mode === 'running' && S.run && S.run.mic) return toast('Stop first to turn the mic off.'); micOff(); } else await micOn(); };
@@ -1188,11 +1384,18 @@ function init() {
   window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; $('#installBtn').hidden = false; });
   $('#installBtn').onclick = async () => { if (!deferred) return; deferred.prompt(); try { await deferred.userChoice; } catch (e) {} deferred = null; $('#installBtn').hidden = true; };
   window.addEventListener('appinstalled', () => { $('#installBtn').hidden = true; });
-  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+    // the worker adds cross-origin-isolation headers (multi-core AI); reload once when it first takes control
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      try { if (!self.crossOriginIsolated && !sessionStorage.getItem('sas.coi') && S.mode === 'idle' && !sepJobs.size) { sessionStorage.setItem('sas.coi', '1'); location.reload(); } } catch (e) {}
+    });
+  }
   document.addEventListener('visibilitychange', () => { if (document.hidden && S.mode !== 'idle') finish(); });
   setTabUI(); renderLibrary(); renderNowPlaying(); updateTransport(); updateMicUI();
   loadTracks();
   selectItem(SONGS[0]);
+  if (location.hash === '#demo') loadDemo();
   requestAnimationFrame(frameLoop);
 }
 init();

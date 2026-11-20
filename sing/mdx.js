@@ -127,14 +127,23 @@
     return buf.buffer;
   }
   const sessions = {};
-  async function getSession(key, onStatus) {
+  async function getSession(key, onStatus, o = {}) {
     if (sessions[key]) return sessions[key];
     const m = MODELS[key], ort = await loadOrt();
     const bytes = await fetchModel(m, p => onStatus('download', p));
     onStatus('init', 0);
-    const gpu = await hasWebGPU();
     let sess = null, ep = 'wasm';
-    if (gpu) { try { sess = await ort.InferenceSession.create(bytes, { executionProviders: ['webgpu'], graphOptimizationLevel: 'all' }); ep = 'webgpu'; } catch (e) { sess = null; } }
+    if (o.gpu !== false && await hasWebGPU()) {
+      // GPU set-up can be slow (or stall) on some phones: give up after a while and use the CPU
+      const timeout = o.gpuTimeout || 180000;
+      try {
+        sess = await Promise.race([
+          ort.InferenceSession.create(bytes, { executionProviders: ['webgpu'], graphOptimizationLevel: 'all' }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('gpu-timeout')), timeout)),
+        ]);
+        ep = 'webgpu';
+      } catch (e) { sess = null; onStatus('gpu-failed', 0, String(e && e.message || e)); }
+    }
     if (!sess) sess = await ort.InferenceSession.create(bytes, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
     return (sessions[key] = { sess, ep, m });
   }
@@ -162,7 +171,7 @@
   // L, R: Float32Array at 44.1 kHz. Returns the instrumental at 44.1 kHz.
   async function separate(L, R, opts = {}) {
     const key = opts.model || 'hq3', onProgress = opts.onProgress || (() => {}), onStatus = opts.onStatus || (() => {});
-    const { sess, ep, m } = await getSession(key, onStatus);
+    const { sess, ep, m } = await getSession(key, onStatus, opts);
     const inName = sess.inputNames[0], outName = sess.outputNames[0], t0 = performance.now(); let k = 0;
     const run = async spec => {
       const out = await sess.run({ [inName]: new root.ort.Tensor('float32', spec, [1, 4, m.dimF, m.dimT]) });
@@ -172,6 +181,7 @@
     return { L: oL, R: oR, ep };
   }
 
-  const api = { MODELS, SR, makeFFT, makeSTFT, demixWith, separate, loadOrt, hasWebGPU, getSession };
+  const isCached = async key => { try { const c = await caches.open('sing-models'); return !!(await c.match(MODELS[key].url)); } catch (e) { return false; } };
+  const api = { isCached, MODELS, SR, makeFFT, makeSTFT, demixWith, separate, loadOrt, hasWebGPU, getSession };
   if (typeof module !== 'undefined') module.exports = api; else root.MDX = api;
 })(typeof window !== 'undefined' ? window : globalThis);
