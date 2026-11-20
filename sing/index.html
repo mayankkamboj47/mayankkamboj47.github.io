@@ -76,6 +76,8 @@ input[type=range]{flex:1;accent-color:var(--accent);min-width:0}
 .mic.bad{border-color:#ff808966;color:var(--off)}
 .lvl{width:30px;height:6px;border-radius:3px;background:#2b2c4b;overflow:hidden}
 .lvl i{display:block;height:100%;width:0;background:var(--good);transition:width .06s}
+.readybar{height:4px;margin:2px 42px 0;border-radius:2px;background:#ffd06e40;overflow:hidden}
+.readybar i{display:block;height:100%;width:0;background:var(--good);transition:width .4s}
 .kstatus{margin-top:10px;padding:9px 12px;border-radius:10px;background:#ffffff0a;border:1px solid var(--line);font-size:12.5px;font-weight:700;color:var(--muted)}
 .voxrow{display:flex;align-items:center;gap:10px;margin-top:12px;font-weight:700;font-size:13.5px}
 .voxrow b{min-width:40px;text-align:right;font-variant-numeric:tabular-nums}
@@ -182,6 +184,7 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:18px}
     <canvas id="roll"></canvas>
 
     <div class="scrub"><span id="tCur">0:00</span><input type="range" id="scrub" min="0" max="1" step="0.01" value="0" aria-label="Position"><span id="tDur">0:00</span></div>
+    <div class="readybar" id="readyBar" hidden title="Clean AI karaoke ready up to here"><i></i></div>
 
     <div class="transport" id="transport">
       <button class="btn grow" id="btnSing">● Sing</button>
@@ -267,7 +270,7 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:18px}
 </div>
 
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="sep.js?v=0.4.1"></script>
-<script src="app.js?v=0.4.1"></script>
+<script src="sep.js?v=0.5"></script>
+<script src="app.js?v=0.5"></script>
 </body>
 </html>
