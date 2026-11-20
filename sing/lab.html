@@ -12,8 +12,21 @@
 <p>Public-domain voice: “Breves dies hominis” sung by Magdalen Kadel (Wikimedia Commons, released to the public domain). The accompaniment is synthesised here.</p>
 <div><select id="model"><option value="hq3">Inst HQ 3</option><option value="kara2">Karaoke 2</option></select><button id="go">Run test</button><button id="pm">▶ mix</button><button id="pi">▶ AI instrumental</button><button id="pv">▶ AI vocals</button></div>
 <pre id="out">idle</pre>
-<script src="mdx.js?v=lab1"></script>
+<script src="mdx.js?v=4"></script>
 <script>
+let W = null, wid = 0;
+function workerSeparate(L, R, model, onStatus, onProgress) {
+  W = W || new Worker('aiworker.js?v=4');
+  const id = ++wid, l = Float32Array.from(L), r = Float32Array.from(R);
+  return new Promise((res, rej) => {
+    const h = e => { const d = e.data; if (d.id !== id) return;
+      if (d.type === 'status') onStatus(d.s, d.p); else if (d.type === 'progress') onProgress(d.p, d.info);
+      else if (d.type === 'done') { W.removeEventListener('message', h); res(d); } else if (d.type === 'error') { W.removeEventListener('message', h); rej(new Error(d.message)); } };
+    W.addEventListener('message', h);
+    W.postMessage({ cmd: 'separate', id, L: l, R: r, model }, [l.buffer, r.buffer]);
+  });
+}
+const sep = (L, R, o) => workerSeparate(L, R, o.model, o.onStatus || (() => {}), o.onProgress || (() => {}));
 const log = s => { document.getElementById('out').textContent += '\n' + s; };
 const VOICE_URL = 'https://upload.wikimedia.org/wikipedia/commons/d/dd/Breves_dies_hominis.ogg';
 const SR = 44100, DUR = 30;
@@ -55,7 +68,7 @@ async function run() {
     log(`mix ready: ${DUR}s · baseline (mix vs accompaniment) SDR ${sdr(acc, mix).toFixed(1)} dB`);
     const model = document.getElementById('model').value;
     const t0 = performance.now(); let lastS = 0;
-    const res = await MDX.separate(mix[0], mix[1], { model,
+    const res = await sep(mix[0], mix[1], { model,
       onStatus: (s, p) => { if (s === 'download' && performance.now() - lastS > 2000) { lastS = performance.now(); log(`downloading model ${(p * 100).toFixed(0)}%`); } if (s === 'init') log('model downloaded, creating session…'); },
       onProgress: (p, info) => log(`chunk ${(p * 100).toFixed(0)}% · ${info.ep} · ${(info.perChunk / 1000).toFixed(2)} s per 5.9 s chunk`) });
     const tt = (performance.now() - t0) / 1000;
@@ -67,7 +80,7 @@ async function run() {
     log(`  voice energy left in instrumental (approx): ${(100 * Math.sqrt(Math.max(0, (E(inst[0].map((x, i) => x - acc[0][i])) + E(inst[1].map((x, i) => x - acc[1][i]))) / (E(voc[0]) + E(voc[1]))))).toFixed(0)}% of voice amplitude (includes any damage)`);
     // instrument-only passthrough: how much does the model change a piece with no voice?
     const t1 = performance.now();
-    const r2 = await MDX.separate(AL.subarray(0, 12 * SR), AR.subarray(0, 12 * SR), { model });
+    const r2 = await sep(AL.subarray(0, 12 * SR), AR.subarray(0, 12 * SR), { model, onProgress: (p, info) => log(`  passthrough chunk ${(p * 100).toFixed(0)}% · ${(info.perChunk / 1000).toFixed(1)} s/chunk`) });
     log(`  accompaniment alone through the model: SDR ${sdr([AL.subarray(0, 12 * SR), AR.subarray(0, 12 * SR)], [r2.L, r2.R]).toFixed(1)} dB (higher = left alone), ${((performance.now() - t1) / 1000).toFixed(1)} s`);
     log('DONE');
   } catch (e) { log('ERROR: ' + (e && e.stack || e)); }
