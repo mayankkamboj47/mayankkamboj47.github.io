@@ -1,6 +1,6 @@
 'use strict';
 /* Sing-Along Studio — live pitch tracking, melodies, tracks, scoring, karaoke. */
-const VERSION = '0.2';
+const VERSION = '0.3';
 
 /* ---------------- helpers ---------------- */
 const $ = (s, el = document) => el.querySelector(s);
@@ -20,7 +20,7 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem('sas.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem('sas.' + k, JSON.stringify(v)); } catch (e) {} }
 };
-const DEFAULTS = { fit: true, transpose: 0, speed: 1, guideVol: 0.7, tol: 50, anyOct: true, earphones: false, countIn: true, reps: 5, syncMs: 0, removeVocals: false, sens: 2, range: null, bannerOff: false };
+const DEFAULTS = { fit: true, transpose: 0, speed: 1, guideVol: 0.7, tol: 50, anyOct: true, earphones: false, countIn: true, reps: 5, syncMs: 0, vocals: 0.2, sens: 2, range: null, bannerOff: false };
 const settings = Object.assign({}, DEFAULTS, store.get('settings', {}));
 const saveSettings = () => store.set('settings', settings);
 const bests = store.get('bests', {});
@@ -145,28 +145,20 @@ function stopGuide() {
   try { gb.gain.disconnect(); gb.click.disconnect(); if (gb.voice) gb.voice.disconnect(); } catch (e) {}
   S.guide = null;
 }
-// Classic karaoke trick: vocals are usually panned centre, so L−R cancels them.
-// Keep the low end from the mid channel so bass and kick survive.
-function vocalRemover(dest) {
-  const split = ctx.createChannelSplitter(2);
-  const inv = ctx.createGain(); inv.gain.value = -1;
-  const side = ctx.createGain(); side.gain.value = 1.3;
-  split.connect(side, 0); split.connect(inv, 1); inv.connect(side);
-  const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 170;
-  side.connect(hp);
-  const mid = ctx.createGain(); mid.gain.value = 0.5;
-  split.connect(mid, 0); split.connect(mid, 1);
-  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 150;
-  mid.connect(lp);
-  hp.connect(dest); lp.connect(dest);
-  return split;
-}
-function scheduleGuide(gb, songStart, from, removeVox) {
+// Track playback modes: 'orig' = the original, 'mix' = karaoke instrumental + some of the
+// singer (orig·v + inst·(1−v)), 'vocals' = the singer alone (orig − inst). Sources start on
+// the same sample so the subtraction is exact.
+function scheduleGuide(gb, songStart, from, mode = 'orig') {
   if (S.item.kind === 'track') {
-    const buf = S.item.rec.buffer, src = ctx.createBufferSource(); src.buffer = buf;
-    if (removeVox && buf.numberOfChannels >= 2) src.connect(vocalRemover(gb.gain)); else src.connect(gb.gain);
-    const when = songStart + from;
-    src.start(Math.max(ctx.currentTime, when), from); gb.nodes.push(src);
+    const rec = S.item.rec, when = Math.max(ctx.currentTime, songStart + from);
+    const play = (buf, gain) => {
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const g = ctx.createGain(); g.gain.value = gain; src.connect(g); g.connect(gb.gain);
+      src.start(when, from); gb.nodes.push(src); return g;
+    };
+    if (mode === 'orig' || !rec.inst) play(rec.buffer, 1);
+    else if (mode === 'vocals') { play(rec.buffer, 1); play(rec.inst, -1); }
+    else { const v = settings.vocals; gb.vox = { orig: play(rec.buffer, v), inst: play(rec.inst, 1 - v) }; }
   } else {
     for (const n of S.notes) {
       if (n.t + n.d <= from + 0.01) continue;
@@ -555,12 +547,14 @@ function itemsFor(tab) {
   if (tab === 'tracks') return S.tracks.map(trackItem);
   return [];
 }
-function trackItem(rec) { return { kind: 'track', key: 'track:' + rec.id, title: rec.name, sub: `${fmt(rec.duration)} · ${rec.notes.length} melody notes`, rec }; }
+function trackItem(rec) { return { kind: 'track', key: 'track:' + rec.id, title: rec.name, get sub() { return `${fmt(rec.duration)} · ${rec.notes.length} notes${rec.inst ? ' · karaoke ✓' : ''}`; }, rec }; }
 const FREE = { kind: 'free', key: 'free', title: 'Free tuner', sub: 'Sing anything and see your pitch' };
 
 function selectItem(item) {
   stopAll();
   S.item = item; S.reviewT = 0;
+  for (const r of S.tracks) if (r !== item.rec && !sepJobs.has(r.id)) { r.buffer = null; r.inst = null; }
+  if (item.kind === 'track') prepareKaraoke(item.rec).catch(() => {});
   if (item.kind === 'free') { ensureCtx(); S.free.t0 = ctx.currentTime; S.free.frames = []; micOn(); }
   compile();
   renderLibrary(); renderNowPlaying(); updateTransport();
@@ -573,7 +567,7 @@ async function start(kind) {
   ensureCtx(); try { await ctx.resume(); } catch (e) {}
   stopAll();
   let micOk = false;
-  if (kind !== 'listen') {
+  if (kind !== 'listen' && kind !== 'vocals') {
     micOk = await micOn();
     if (!micOk && kind === 'score') kind = 'listen';
   }
@@ -584,8 +578,8 @@ async function start(kind) {
       try { rec.buffer = await decodeAudio(await rec.blob.arrayBuffer()); } catch (e) { hideProgress(); return toast('Couldn’t load this track.'); }
       hideProgress();
     }
-    if ((kind === 'karaoke' || (kind === 'score' && settings.removeVocals)) && (rec.buffer.numberOfChannels < 2 || (rec.side != null && rec.side < 0.015)))
-      toast('This track is (nearly) mono, so the vocals can’t be removed.', 4500);
+    if ((kind === 'karaoke' || kind === 'vocals') && !rec.inst) { if (!(await waitKaraoke(rec))) return; }
+    else if (kind === 'score' && !rec.inst && settings.vocals < 0.95) toast('Karaoke version is still being prepared, so this plays the original.');
   }
   let from = 0;
   if (S.reviewT > 0.3 && S.reviewT < S.duration - 0.5) {
@@ -595,10 +589,10 @@ async function start(kind) {
   const pre = (S.item.kind !== 'track' && settings.countIn) ? S.bpb * S.spb : 0.6;
   const t0 = ctx.currentTime + 0.2;
   S.songStart = t0 + pre - from;
-  const gb = guideBus(kind === 'karaoke' ? Math.max(0.6, settings.guideVol) : settings.guideVol);
+  const gb = guideBus(S.item.kind === 'track' ? Math.max(0.6, settings.guideVol) : settings.guideVol);
   if (S.item.kind !== 'track' && settings.countIn) for (let b = 0; b < S.bpb; b++) click(t0 + b * S.spb, b === 0, gb);
-  scheduleGuide(gb, S.songStart, from, kind === 'karaoke' || (kind === 'score' && settings.removeVocals));
-  S.run = newRun(kind, from, micOk && kind !== 'listen');
+  scheduleGuide(gb, S.songStart, from, kind === 'listen' ? 'orig' : kind === 'vocals' ? 'vocals' : 'mix');
+  S.run = newRun(kind, from, micOk && kind !== 'listen' && kind !== 'vocals');
   if (S.run.mic) startRecorder(S.run);
   S.mode = 'running'; S.endAt = S.songStart + S.duration + 0.35;
   hideResults(); wakeLock(true); updateTransport();
@@ -631,7 +625,7 @@ function listenBack() {
   const from = S.reviewT > run.from && S.reviewT < run.endT - 0.3 ? S.reviewT : run.from;
   const t0 = ctx.currentTime + 0.15; S.songStart = t0 - from;
   const gb = guideBus(settings.guideVol * 0.5);
-  scheduleGuide(gb, S.songStart, from, false);
+  scheduleGuide(gb, S.songStart, from, 'mix');
   const voice = ctx.createGain(); voice.gain.value = 1.4; voice.connect(master); gb.voice = voice;
   const src = ctx.createBufferSource(); src.buffer = run.take.buffer; src.connect(voice);
   const tau0 = from + run.take.lead;
@@ -683,16 +677,88 @@ const DB = {
   open() {
     if (this.db) return Promise.resolve(this.db);
     return new Promise((res, rej) => {
-      const r = indexedDB.open('sing-along-studio', 1);
-      r.onupgradeneeded = () => r.result.createObjectStore('tracks', { keyPath: 'id' });
+      const r = indexedDB.open('sing-along-studio', 2);
+      r.onupgradeneeded = () => {
+        const db = r.result;
+        if (!db.objectStoreNames.contains('tracks')) db.createObjectStore('tracks', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('karaoke')) db.createObjectStore('karaoke', { keyPath: 'id' });
+      };
       r.onsuccess = () => res(this.db = r.result); r.onerror = () => rej(r.error);
     });
   },
-  async tx(mode, fn) { const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction('tracks', mode); const q = fn(t.objectStore('tracks')); t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); }); },
-  all() { return this.tx('readonly', s => s.getAll()); },
-  put(o) { return this.tx('readwrite', s => s.put(o)); },
-  del(id) { return this.tx('readwrite', s => s.delete(id)); },
+  async tx(store, mode, fn) { const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction(store, mode); const q = fn(t.objectStore(store)); t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); }); },
+  all() { return this.tx('tracks', 'readonly', s => s.getAll()); },
+  put(o) { return this.tx('tracks', 'readwrite', s => s.put(o)); },
+  del(id) { return this.tx('tracks', 'readwrite', s => s.delete(id)); },
+  kget(id) { return this.tx('karaoke', 'readonly', s => s.get(id)); },
+  kput(o) { return this.tx('karaoke', 'readwrite', s => s.put(o)); },
+  kdel(id) { return this.tx('karaoke', 'readwrite', s => s.delete(id)); },
 };
+const storable = r => ({ id: r.id, name: r.name, blob: r.blob, notes: r.notes, duration: r.duration, side: r.side, added: r.added, f0t: r.f0t, f0m: r.f0m });
+
+/* ---------------- karaoke (vocal separation in a worker) ---------------- */
+const SEP_V = 1, sepJobs = new Map();
+let kWait = null;
+function toInt16Blob(L, R) {
+  const n = L.length, a = new Int16Array(n * 2);
+  for (let i = 0; i < n; i++) { a[2 * i] = clamp(L[i], -1, 1) * 32767; a[2 * i + 1] = clamp(R[i], -1, 1) * 32767; }
+  return new Blob([a.buffer]);
+}
+async function int16ToBuffer(c) {
+  const a = new Int16Array(await c.data.arrayBuffer()), L = new Float32Array(c.len), R = new Float32Array(c.len);
+  for (let i = 0; i < c.len; i++) { L[i] = a[2 * i] / 32767; R[i] = a[2 * i + 1] / 32767; }
+  const b = ctx.createBuffer(2, c.len, c.sr); b.copyToChannel(L, 0); b.copyToChannel(R, 1); return b;
+}
+function karaokeUI(rec) {
+  if (kWait === rec) progress('Preparing karaoke…', rec.sepP);
+  if (S.item && S.item.rec === rec) { updateTransport(); if (rec.sepP === 1) renderNowPlaying(); }
+}
+function prepareKaraoke(rec) {
+  if (rec.inst) return Promise.resolve(rec.inst);
+  if (sepJobs.has(rec.id)) return sepJobs.get(rec.id);
+  const job = (async () => {
+    ensureCtx(); rec.sepP = 0; karaokeUI(rec);
+    if (!rec.buffer) rec.buffer = await decodeAudio(await rec.blob.arrayBuffer());
+    const buf = rec.buffer;
+    try {
+      const c = await DB.kget(rec.id);
+      if (c && c.v === SEP_V && c.sr === buf.sampleRate && c.len === buf.length) { rec.inst = await int16ToBuffer(c); rec.sepP = 1; karaokeUI(rec); renderLibrary(); return rec.inst; }
+    } catch (e) {}
+    if (!rec.f0t) {
+      const fr = await melodyExtract(buf, p => { rec.sepP = p * 0.3; karaokeUI(rec); });
+      rec.f0t = Float32Array.from(fr.map(x => x.t)); rec.f0m = Float32Array.from(fr.map(x => x.m));
+      try { await DB.put(storable(rec)); } catch (e) {}
+    }
+    const p0 = rec.sepP || 0;
+    const L = buf.getChannelData(0).slice(), R = (buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0)).slice();
+    const mono = buf.numberOfChannels < 2 || (rec.side != null && rec.side < 0.015);
+    const [oL, oR] = await new Promise((res, rej) => {
+      const w = new Worker('sep.js?v=' + VERSION);
+      w.onmessage = e => {
+        const d = e.data;
+        if (d.type === 'progress') { rec.sepP = p0 + (1 - p0) * d.p * 0.98; karaokeUI(rec); }
+        else if (d.type === 'done') { w.terminate(); res([d.L, d.R]); }
+        else { w.terminate(); rej(new Error(d.message)); }
+      };
+      w.onerror = e => { w.terminate(); rej(new Error(e.message || 'worker failed')); };
+      w.postMessage({ L, R, sr: buf.sampleRate, f0t: rec.f0t, f0m: rec.f0m, opts: { mono } }, [L.buffer, R.buffer]);
+    });
+    const inst = ctx.createBuffer(2, oL.length, buf.sampleRate); inst.copyToChannel(oL, 0); inst.copyToChannel(oR, 1);
+    rec.inst = inst; rec.sepP = 1; karaokeUI(rec); renderLibrary();
+    try { await DB.kput({ id: rec.id, v: SEP_V, sr: buf.sampleRate, len: oL.length, data: toInt16Blob(oL, oR) }); } catch (e) {}
+    return inst;
+  })();
+  sepJobs.set(rec.id, job);
+  job.then(() => sepJobs.delete(rec.id), () => { sepJobs.delete(rec.id); rec.sepP = null; karaokeUI(rec); });
+  return job;
+}
+async function waitKaraoke(rec) {
+  kWait = rec; progress('Preparing karaoke…', rec.sepP || 0);
+  try { await prepareKaraoke(rec); return true; }
+  catch (e) { toast('Couldn’t prepare karaoke for this track.'); return false; }
+  finally { kWait = null; hideProgress(); }
+}
+
 async function loadTracks() {
   try { const all = await DB.all(); S.tracks = (all || []).sort((a, b) => b.added - a.added); } catch (e) { S.tracks = []; }
   if (S.tab === 'tracks') renderLibrary();
@@ -704,17 +770,18 @@ async function onTrackFile(file) {
     const buf = await decodeAudio(await file.arrayBuffer());
     const frames = await melodyExtract(buf, p => progress('Finding the melody…', 0.1 + p * 0.9));
     const notes = contourToNotes(frames);
-    const rec = { id: 't' + Date.now(), name: file.name.replace(/\.[^.]+$/, ''), blob: file, notes, duration: buf.duration, side: stereoSideRatio(buf), added: Date.now() };
-    try { await DB.put(rec); } catch (e) { toast('Couldn’t save the track on this device; it’ll stay until you close the app.'); }
+    const rec = { id: 't' + Date.now(), name: file.name.replace(/\.[^.]+$/, ''), blob: file, notes, duration: buf.duration, side: stereoSideRatio(buf), added: Date.now(),
+      f0t: Float32Array.from(frames.map(x => x.t)), f0m: Float32Array.from(frames.map(x => x.m)) };
+    try { await DB.put(storable(rec)); } catch (e) { toast('Couldn’t save the track on this device; it’ll stay until you close the app.'); }
     rec.buffer = buf; S.tracks.unshift(rec);
     hideProgress(); S.tab = 'tracks'; setTabUI(); selectItem(trackItem(rec));
     if (notes.length < 12) toast('Couldn’t find a clear melody. A vocal-only version works best, but Karaoke still works.', 6000);
-    else toast(`Found ${notes.length} melody notes. Tap Sing or Karaoke.`);
+    else toast(`Found ${notes.length} melody notes. Karaoke is being prepared…`);
   } catch (e) { hideProgress(); toast('Couldn’t read that audio file. Try an mp3, m4a or wav.'); }
 }
 async function deleteTrack(id) {
   if (!confirm('Remove this track from the app?')) return;
-  try { await DB.del(id); } catch (e) {}
+  try { await DB.del(id); await DB.kdel(id); } catch (e) {}
   S.tracks = S.tracks.filter(t => t.id !== id);
   if (S.item && S.item.rec && S.item.rec.id === id) { S.item = null; compile(); renderNowPlaying(); updateTransport(); }
   renderLibrary();
@@ -971,13 +1038,16 @@ function updateTransport() {
   const isTrack = it && it.kind === 'track', isFree = it && it.kind === 'free';
   $('#btnSing').hidden = run || isFree; $('#btnListen').hidden = run || isFree; $('#btnKaraoke').hidden = run || !isTrack;
   $('#btnStop').hidden = !run;
+  const rec = isTrack ? it.rec : null;
+  $('#btnKaraoke').textContent = '🎤 Karaoke' + (rec && !rec.inst && rec.sepP != null ? ' ' + Math.round(rec.sepP * 100) + '%' : '');
+  $('#voxRow').hidden = !isTrack; $('#vocalsOnly').hidden = !isTrack || run;
   $('#btnStop').textContent = S.mode === 'replay' ? '■ Stop playback' : '■ Stop';
   $('#btnSing').disabled = !it; $('#btnListen').disabled = !it;
   $('#scrub').disabled = run || !it || isFree; $('#scrub').max = S.duration || 1;
   $('#uploadTake').hidden = !it || isFree || run;
   const from = !run && S.reviewT > 0.3 && it && !isFree ? 'Starts from ' + fmt(S.reviewT) + ' (drag to 0:00 for the start)' : '';
-  $('#fromLbl').textContent = run ? (S.mode === 'replay' ? 'Playing back your take…' : S.run && S.run.kind === 'karaoke' ? 'Karaoke: vocals removed' : S.run && !S.run.mic ? 'Listening only (no scoring)' : '') : from;
-  $$('#settings input, #settings select, #settings button').forEach(el => { if (!['sVol', 'sSync', 'sSens'].includes(el.id)) el.disabled = run; });
+  $('#fromLbl').textContent = run ? (S.mode === 'replay' ? 'Playing back your take…' : S.run && S.run.kind === 'karaoke' ? 'Karaoke' : S.run && S.run.kind === 'vocals' ? 'The singer on their own' : S.run && !S.run.mic ? 'Listening only (no scoring)' : '') : from;
+  $$('#settings input, #settings select, #settings button').forEach(el => { if (!['sVol', 'sSync', 'sSens', 'sVocals'].includes(el.id)) el.disabled = run; });
   $('#sFit').disabled = run || !settings.range;
 }
 function updateMicUI() {
@@ -1057,7 +1127,8 @@ function syncSettingsUI() {
   $('#sVol').value = settings.guideVol;
   $$('#sTol button').forEach(b => b.classList.toggle('on', +b.dataset.v === settings.tol));
   $('#sOct').checked = settings.anyOct; $('#sEar').checked = settings.earphones; $('#sCount').checked = settings.countIn;
-  $('#sReps').value = String(settings.reps); $('#sVox').checked = settings.removeVocals;
+  $('#sReps').value = String(settings.reps);
+  $('#sVocals').value = settings.vocals; $('#vocalsVal').textContent = Math.round(settings.vocals * 100) + '%';
   $('#sSync').value = settings.syncMs; $('#syncVal').textContent = (settings.syncMs > 0 ? '+' : '') + settings.syncMs + ' ms';
   $('#sSens').value = settings.sens; $('#sensVal').textContent = SENS_LBL[settings.sens];
   $('#rangeChip').textContent = settings.range ? noteName(settings.range[0]) + '–' + noteName(settings.range[1]) : 'Range?';
@@ -1078,7 +1149,10 @@ function bindSettings() {
   $('#sEar').onchange = e => { settings.earphones = e.target.checked; changed(false); if (mic.on) micOn(); };
   $('#sCount').onchange = e => { settings.countIn = e.target.checked; changed(false); };
   $('#sReps').onchange = e => { settings.reps = +e.target.value; changed(true); };
-  $('#sVox').onchange = e => { settings.removeVocals = e.target.checked; changed(false); };
+  $('#sVocals').oninput = e => {
+    settings.vocals = +e.target.value; changed(false);
+    const vx = S.guide && S.guide.vox; if (vx) { vx.orig.gain.value = settings.vocals; vx.inst.gain.value = 1 - settings.vocals; }
+  };
   $('#sSync').oninput = e => { settings.syncMs = +e.target.value; changed(false); };
   $('#sSens').oninput = e => { settings.sens = +e.target.value; changed(false); };
 }
@@ -1090,6 +1164,7 @@ function init() {
   $('#btnSing').onclick = () => start('score');
   $('#btnListen').onclick = () => start('listen');
   $('#btnKaraoke').onclick = () => start('karaoke');
+  $('#vocalsOnly').onclick = () => start('vocals');
   $('#btnStop').onclick = () => finish();
   $('#micBtn').onclick = async () => { if (mic.on) { if (S.mode === 'running' && S.run && S.run.mic) return toast('Stop first to turn the mic off.'); micOff(); } else await micOn(); };
   $('#scrub').oninput = e => { S.reviewT = +e.target.value; updateTransport(); };

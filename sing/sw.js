@@ -1,6 +1,6 @@
 // Network-first so every update shows up right away; falls back to cache offline.
 const CACHE = 'sing-along-studio';
-const CORE = ['./', './index.html', './app.js', './manifest.webmanifest', './icon-192.png'];
+const CORE = ['./', './index.html', './app.js', './sep.js', './manifest.webmanifest', './icon-192.png'];
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).catch(() => {})); });
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', e => {

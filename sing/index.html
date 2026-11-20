@@ -76,6 +76,9 @@ input[type=range]{flex:1;accent-color:var(--accent);min-width:0}
 .mic.bad{border-color:#ff808966;color:var(--off)}
 .lvl{width:30px;height:6px;border-radius:3px;background:#2b2c4b;overflow:hidden}
 .lvl i{display:block;height:100%;width:0;background:var(--good);transition:width .06s}
+.voxrow{display:flex;align-items:center;gap:10px;margin-top:12px;font-weight:700;font-size:13.5px}
+.voxrow b{min-width:40px;text-align:right;font-variant-numeric:tabular-nums}
+.sub .link+.link{margin-left:12px}
 .sub{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--muted)}
 .link{background:none;border:0;color:var(--accent);font-weight:700;padding:4px 0;font-size:13px}
 .results{margin-top:12px;background:linear-gradient(180deg,#221f45,var(--panel2));border:1px solid var(--line);border-radius:16px;padding:14px}
@@ -186,7 +189,8 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:18px}
       <button class="btn stop grow" id="btnStop" hidden>■ Stop</button>
       <button class="mic" id="micBtn"><span id="micLbl">Mic off</span><span class="lvl"><i id="lvl"></i></span></button>
     </div>
-    <div class="sub"><span id="fromLbl"></span><button class="link" id="uploadTake">Score a recording instead…</button></div>
+    <div class="voxrow" id="voxRow" hidden><span>Singer's voice</span><input type="range" id="sVocals" min="0" max="1" step="0.05" aria-label="Singer's voice volume"><b id="vocalsVal">20%</b></div>
+    <div class="sub"><span id="fromLbl"></span><span><button class="link" id="vocalsOnly" hidden>Hear vocals only</button> <button class="link" id="uploadTake">Score a recording…</button></span></div>
 
     <div class="results" id="results" hidden></div>
   </section>
@@ -203,7 +207,6 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:18px}
       <label class="row"><span>I'm using earphones<small>Off = phone speaker, echo cancelling on</small></span><input type="checkbox" id="sEar"></label>
       <label class="row"><span>Count-in<small>One bar of clicks before melodies</small></span><input type="checkbox" id="sCount"></label>
       <div class="row"><span>Warm-up repeats<small>Each repeat moves up a semitone</small></span><select id="sReps"><option>1</option><option>3</option><option>5</option><option>8</option></select></div>
-      <label class="row"><span>Remove vocals when scoring tracks<small>Sing the melody on your own</small></span><input type="checkbox" id="sVox"></label>
       <div class="row"><span>Sync offset<small id="syncVal">0 ms</small></span><input type="range" id="sSync" min="-300" max="300" step="10"></div>
       <div class="row"><span>Mic sensitivity<small id="sensVal">Normal</small></span><input type="range" id="sSens" min="0" max="4" step="1"></div>
     </div>
@@ -239,7 +242,7 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:18px}
     <h3>How it works</h3>
     <ul style="padding-left:18px;margin:0">
       <li><b>Sing</b> plays the melody and listens to you. Your voice is the line: <span style="color:var(--good)">green</span> is in tune, <span style="color:var(--close)">yellow</span> is close, <span style="color:var(--off)">red</span> is off.</li>
-      <li><b>Tracks:</b> load any song from your phone. The app works out the melody (clearest with a solo voice), so you can sing along and get scored. <b>Karaoke</b> plays it with the vocals cut out.</li>
+      <li><b>Tracks:</b> load any song from your phone. The app works out the melody so you can sing along and get scored, and prepares a <b>karaoke</b> version by cutting out the singer. The <b>Singer's voice</b> slider brings them back as a quiet guide, and <b>Hear vocals only</b> plays just the singer so you can learn the tune.</li>
       <li><b>Range finder</b> (the Range button at the top) moves every melody into a key that fits your voice.</li>
       <li>Drag the slider under the roll to practise <b>from any point</b>.</li>
       <li>Wired earphones give the most accurate results. On the phone speaker, turn "I'm using earphones" off so the mic ignores the music.</li>
@@ -255,6 +258,6 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:18px}
 </div>
 
 <div id="toast" role="status" aria-live="polite"></div>
-<script src="app.js?v=0.2"></script>
+<script src="app.js?v=0.3"></script>
 </body>
 </html>
