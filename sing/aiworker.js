@@ -7,7 +7,7 @@ function init(threads) {
     importScripts(ORT_BASE + 'ort.webgpu.min.js');
     self.ort.env.wasm.wasmPaths = ORT_BASE;
     self.ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.max(1, threads || 1) : 1;
-    importScripts('mdx.js?v=0.4');
+    importScripts('mdx.js?v=0.4.1');
   })();
   return ready;
 }

@@ -1,6 +1,6 @@
 'use strict';
 /* Sing-Along Studio — live pitch tracking, melodies, tracks, scoring, karaoke. */
-const VERSION = '0.4';
+const VERSION = '0.4.1';
 
 /* ---------------- helpers ---------------- */
 const $ = (s, el = document) => el.querySelector(s);
@@ -746,7 +746,12 @@ function aiRunOnce(L, R, model, threads, onStatus, onProgress) {
     };
     w.addEventListener('message', h);
     w.onerror = ev => { w.removeEventListener('message', h); rej(new Error(ev.message || 'AI worker failed')); };
-    w.postMessage({ cmd: 'separate', id, L, R, model, gpu: settings.aiGpu !== false, threads }, [L.buffer, R.buffer]);
+    const gpu = settings.aiGpu !== false;
+    if (gpu) { try { localStorage.setItem('sas.gpuTry', '1'); } catch (e) {} }
+    const clearTry = () => { try { localStorage.removeItem('sas.gpuTry'); } catch (e) {} };
+    const h2 = e => { const d = e.data; if (d.id === id && (d.type !== 'status' || d.s === 'ready' || d.s === 'gpu-failed')) { clearTry(); w.removeEventListener('message', h2); } };
+    w.addEventListener('message', h2);
+    w.postMessage({ cmd: 'separate', id, L, R, model, gpu, threads }, [L.buffer, R.buffer]);
   });
 }
 async function aiRun(L, R, model, onStatus, onProgress) {
@@ -796,6 +801,7 @@ async function aiSeparate(rec, tag) {
         (st, p, msg) => {
           if (st === 'download') { rec.sepMsg = `Downloading the AI model (${AI_MB[tag]} MB, one time): ${Math.round(p * 100)}%`; karaokeUI(rec); }
           else if (st === 'init') { rec.sepMsg = 'Setting up the AI on this phone (can take a minute the first time)…'; karaokeUI(rec); }
+          else if (st === 'ready') { rec.sepMsg = `AI ready (${msg === 'webgpu' ? 'GPU' : 'CPU'}), starting…`; karaokeUI(rec); }
           else if (st === 'gpu-failed') { settings.aiGpu = false; saveSettings(); toast('The phone’s GPU didn’t cooperate, so the AI is using the CPU (slower).', 5000); }
         },
         (p, info) => {
@@ -1318,7 +1324,7 @@ function syncSettingsUI() {
   $('#sVol').value = settings.guideVol;
   $$('#sTol button').forEach(b => b.classList.toggle('on', +b.dataset.v === settings.tol));
   $('#sOct').checked = settings.anyOct; $('#sEar').checked = settings.earphones; $('#sCount').checked = settings.countIn;
-  $('#sReps').value = String(settings.reps); $('#sKara').value = engineTag();
+  $('#sReps').value = String(settings.reps); $('#sKara').value = engineTag(); $('#sGpu').checked = settings.aiGpu !== false;
   $('#sVocals').value = settings.vocals; $('#vocalsVal').textContent = Math.round(settings.vocals * 100) + '%';
   $('#sSync').value = settings.syncMs; $('#syncVal').textContent = (settings.syncMs > 0 ? '+' : '') + settings.syncMs + ' ms';
   $('#sSens').value = settings.sens; $('#sensVal').textContent = SENS_LBL[settings.sens];
@@ -1340,6 +1346,7 @@ function bindSettings() {
   $('#sEar').onchange = e => { settings.earphones = e.target.checked; changed(false); if (mic.on) micOn(); };
   $('#sCount').onchange = e => { settings.countIn = e.target.checked; changed(false); };
   $('#sReps').onchange = e => { settings.reps = +e.target.value; changed(true); };
+  $('#sGpu').onchange = e => { settings.aiGpu = e.target.checked; changed(false); if (aiW) { aiW.terminate(); aiW = null; } };
   $('#sKara').onchange = e => { settings.karaoke = e.target.value; changed(false); if (S.item && S.item.rec) { S.item.rec.inst = null; S.item.rec.sepMsg = ''; prepareKaraoke(S.item.rec, { auto: true }).catch(() => {}); } };
   $('#sVocals').oninput = e => {
     settings.vocals = +e.target.value; changed(false);
@@ -1393,6 +1400,7 @@ function init() {
   }
   document.addEventListener('visibilitychange', () => { if (document.hidden && S.mode !== 'idle') finish(); });
   setTabUI(); renderLibrary(); renderNowPlaying(); updateTransport(); updateMicUI();
+  try { if (localStorage.getItem('sas.gpuTry') === '1') { localStorage.removeItem('sas.gpuTry'); settings.aiGpu = false; saveSettings(); setTimeout(() => toast('Last time the AI crashed on this phone’s GPU, so it will use the CPU now (you can change this in Settings).', 7000), 800); } } catch (e) {}
   loadTracks();
   selectItem(SONGS[0]);
   if (location.hash === '#demo') loadDemo();
